@@ -20,7 +20,7 @@ spec:
     path: helm/dev/one-color
     targetRevision: '{{.Values._gitTargetRevision}}' 
     helm:
-      releaseName: one-color
+      # releaseName: one-color
       valueFiles:
         - values.yaml
       valuesObject:
