@@ -18,9 +18,9 @@ spec:
   source:
     repoURL: 'https://github.com/diegolagospagopa/devopslab-diego-deploy'
     path: helm/dev/one-color
-    targetRevision: init-charts
+    targetRevision: '{{.Values._gitTargetRevision}}' 
     helm:
-      releaseName: init-charts
+      releaseName: '{{.Values._gitTargetRevision}}'
       valueFiles:
         - values.yaml
       valuesObject:
