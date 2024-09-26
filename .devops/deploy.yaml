@@ -1,0 +1,103 @@
+variables:
+  - name: directoryPattern
+    value: 'dev'  # Modify this pattern according to your needs
+
+resources:
+  repositories:
+    - repository: templates
+      type: github
+      name: pagopa/azure-pipeline-templates
+      ref: refs/tags/v6.8.0
+      endpoint: 'azure-devops-github-ro'
+
+pool:
+  name: $(DEV_AGENT_POOL)
+
+stages:
+  - stage: IdentifyChanges
+    jobs:
+    - job: FindChangedDirectories
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+      - checkout: self
+        fetchDepth: 0  # Necessary to get the full history for comparison
+
+      - bash: |
+          # 1. Find changed directories
+          changed_dirs=$(git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u)
+          echo "Changed directories: $changed_dirs"
+
+          # 2. Filter directories based on pattern and find all subdirectories
+          filtered_dirs=$(echo "$changed_dirs" | grep -E "^$(echo $DIRECTORY_PATTERN | sed 's/\*/.*/g')" | xargs -I {} find {} -type d)
+          echo "Filtered directories: $filtered_dirs"
+
+          # Create a JSON array of the filtered directories
+          json_array=$(echo "$filtered_dirs" | jq -R . | jq -s .)
+          echo "##vso[task.setvariable variable=filteredDirs;isOutput=true]$json_array"
+        name: SetVars
+        displayName: 'Find and filter changed directories'
+        env:
+          DIRECTORY_PATTERN: $(directoryPattern)
+
+  - stage: SyncApps
+    dependsOn: IdentifyChanges
+    jobs:
+    - ${{ each dir in dependencies.IdentifyChanges.outputs['FindChangedDirectories.SetVars.filteredDirs'] }}:
+      - job: Sync_${{ replace(dir, '/', '_') }}
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+        - task: InstallSSHKey@0
+          inputs:
+            knownHostsEntry: 'KNOWN_HOSTS_ENTRY'
+            sshPublicKey: '$(ARGOCD_SSH_PUBLIC_KEY)'
+            sshKeySecureFile: 'argocd_ssh_key'
+          displayName: 'Install SSH key for ArgoCD'
+
+        - bash: |
+            # Login to ArgoCD
+            argocd login $ARGOCD_SERVER --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure
+
+            # Sync the app
+            app_name=$(basename "${{ dir }}")
+            echo "Syncing app: $app_name"
+            argocd app sync "$app_name" --prune
+          displayName: 'Sync ArgoCD App: ${{ dir }}'
+          env:
+            ARGOCD_SERVER: $(argocdServer)
+            ARGOCD_USERNAME: $(argocdUsername)
+            ARGOCD_PASSWORD: $(argocdPassword)
+
+  - stage: RunNewmanTests
+    dependsOn: SyncApps
+    jobs:
+    - ${{ each dir in dependencies.IdentifyChanges.outputs['FindChangedDirectories.SetVars.filteredDirs'] }}:
+      - job: NewmanTest_${{ replace(dir, '/', '_') }}
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+        - task: NodeTool@0
+          inputs:
+            versionSpec: '14.x'
+          displayName: 'Install Node.js'
+
+        - script: |
+            npm install -g newman
+          displayName: 'Install Newman'
+
+        - script: |
+            app_name=$(basename "${{ dir }}")
+            collection_path="${{ dir }}/tests/postman_collection.json"
+            environment_path="${{ dir }}/tests/postman_environment.json"
+            
+            if [ -f "$collection_path" ]; then
+              if [ -f "$environment_path" ]; then
+                newman run "$collection_path" -e "$environment_path"
+              else
+                newman run "$collection_path"
+              fi
+            else
+              echo "No Postman collection found for $app_name. Skipping Newman tests."
+            fi
+          displayName: 'Run Newman Tests for ${{ dir }}'
