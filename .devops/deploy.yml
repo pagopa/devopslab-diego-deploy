@@ -40,38 +40,41 @@ stages:
       - checkout: self
         fetchDepth: 0  # Necessary to get the full history for comparison
 
-      - bash: |
-          changed_dirs_raw=$(git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u) || { echo "Error: Failed to get changed directories."; exit 1; }
-          changed_dirs_list = $changed_dirs_raw | tr ' ' '\n'
-          [ -z "$changed_dirs_list" ] && { echo "Error: No changed directories found."; exit 1; }
-          echo $changed_dirs_list
-
-          echo "---"
-
-          filtered_dirs=$(echo "$changed_dirs_list" | grep "helm/dev") || { echo "Error: grep did not find any directories containing 'helm/dev'."; exit 1; }
-          [ -z "$filtered_dirs" ] && { echo "Error: No directories containing 'helm/dev' found."; exit 1; }
-
-          filtered_dirs=$(echo "$filtered_dirs" | xargs -I {} find {} -type d) || { echo "Error: find did not find any subdirectories."; exit 1; }
-          [ -z "$filtered_dirs" ] && { echo "Error: No subdirectories found."; exit 1; }
-          echo $filtered_dirs
-
-          echo "---"
-
-          folder_only=$(echo $filtered_dirs | sed "s|helm/dev/||") || { echo "Error: sed failed to process directories."; exit 1; }
-          [ -z "$folder_only" ] && { echo "Error: No directories processed."; exit 1; }
-          echo $folder_only
-
-          echo "----"
-
-          json_folders=$(echo "$folder_only" | jq -R . | jq -s .) || { echo "Error: jq failed to convert directories to JSON array."; exit 1; }
-          [ -z "$json_folders" ] && { echo "Error: No JSON array created."; exit 1; }
-          echo $json_folders
-
-          echo "##vso[task.setvariable variable=filteredDirs;isOutput=true]$json_folders"
-        name: SetVars
-        displayName: 'Find and filter changed directories'
-        env:
-          DIRECTORY_PATTERN: $(directoryPattern)
+      - task: Bash@3
+        displayName: 'Get changed directories'
+        inputs:
+          targetType: 'inline'
+          script: |
+            CHANGED_DIRS=$(git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u)
+            echo "##vso[task.setvariable variable=changedDirs]$CHANGED_DIRS"
+  
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.x'
+          addToPath: true
+  
+      - task: PythonScript@0
+        name: ProcessString  # Aggiungiamo un nome a questo task per riferirci ad esso più tardi
+        displayName: 'Process String and Convert to JSON'
+        inputs:
+          scriptSource: 'inline'
+          script: |
+            import json
+            
+            # La stringa originale ottenuta dal comando git
+            str = "$(changedDirs)"
+            
+            # Passo 1: Rimuovere tutte le voci che non hanno "helm/dev"
+            filtered_list = [item for item in str.split() if "helm/dev" in item]
+            
+            # Passo 2: Rimuovere "helm/dev" dalle voci rimanenti
+            cleaned_list = [item.replace("helm/dev/", "") for item in filtered_list]
+            
+            # Passo 3: Convertire il risultato in una stringa JSON
+            result_json = json.dumps(cleaned_list)
+            
+            print("##vso[task.setvariable variable=resultJson;isOutput=true]" + result_json)
+            print("Risultato JSON:", result_json)
 
   # - stage: SyncApps
   #   dependsOn: IdentifyChanges
