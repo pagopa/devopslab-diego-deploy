@@ -7,15 +7,17 @@ parameters:
     - dev
     - uat
     - prod
-- name: ENV2 
+- name: APPS 
   displayName: Environment 
   type: object
   default: [dev]
-  values: [dev, uat, prod]
+  values:
+    - one-color
+    - two-color
 
 variables:
   - name: directoryPattern
-    value: 'helm/dev'  # Modify this pattern according to your needs
+    value: 'helm/${{ parameters.ENV }}'  # Modify this pattern according to your needs
 
 resources:
   repositories:
