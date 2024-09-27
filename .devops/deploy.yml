@@ -73,6 +73,27 @@ stages:
             print("##vso[task.setvariable variable=resultJson;isOutput=true]" + result_json)
             print("Risultato JSON:", result_json)
 
+  - stage: ProcessItems
+    dependsOn: ProcessChanges
+    jobs:
+    - ${{ each item in dependencies.ProcessChanges.outputs['ProcessAndConvert.ConvertToArray.resultJsonArray'] }}:
+      - job: ProcessItem_${{ replace(item, '-', '_') }}
+        displayName: 'Process ${{ item }}'
+        steps:
+        - script: |
+            echo "Processing item: ${{ item }}"
+            # Aggiungi qui le azioni specifiche per questo item
+          displayName: 'Process ${{ item }}'
+  
+  - stage: FinalStage
+    dependsOn: ProcessItems
+    jobs:
+    - job: FinalJob
+      steps:
+      - script: |
+          echo "All items have been processed"
+        displayName: 'Final Step'
+
   # - stage: SyncApps
   #   dependsOn: IdentifyChanges
   #   jobs:
