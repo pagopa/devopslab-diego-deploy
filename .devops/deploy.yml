@@ -75,8 +75,10 @@ stages:
 
   - stage: ProcessItems
     dependsOn: ProcessChanges
+    variables:
+      resultJsonArray: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['ProcessString.resultJsonArray'] ]
     jobs:
-    - ${{ each item in dependencies.ProcessChanges.outputs['ProcessAndConvert.ConvertToArray.resultJsonArray'] }}:
+    - ${{ each item in variables['resultJsonArray'] }}:
       - job: ProcessItem_${{ replace(item, '-', '_') }}
         displayName: 'Process ${{ item }}'
         steps:
