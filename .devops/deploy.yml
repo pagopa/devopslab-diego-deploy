@@ -9,8 +9,8 @@ parameters:
     - prod
 - name: ENV2 
   displayName: Environment 
-  type: string
-  default: dev
+  type: object
+  default: [dev]
   values:
     - dev
     - uat
