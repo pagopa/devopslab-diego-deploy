@@ -73,19 +73,19 @@ stages:
             print(f'##vso[task.setvariable variable={resultJson};isOutput=true]{result_json}')
             print(f'Risultato JSON: {result_json}')
 
-  - stage: ProcessItems
-    dependsOn: ProcessChanges
-    variables:
-      resultJsonArray: $[stageDependencies.ProcessChanges.ProcessAndConvert.outputs['ProcessString.resultJson']]
-    jobs:
-    - ${{ each item in variables['resultJsonArray'] }}:
-      - job: ProcessItem_${{ replace(item, '-', '_') }}
-        displayName: 'Process ${{ item }}'
-        steps:
-        - script: |
-            echo "Processing item: ${{ item }}"
-            # Aggiungi qui le azioni specifiche per questo item
-          displayName: 'Process ${{ item }}'
+  # - stage: ProcessItems
+  #   dependsOn: ProcessChanges
+  #   variables:
+  #     resultJsonArray: $[stageDependencies.ProcessChanges.ProcessAndConvert.outputs['ProcessString.resultJson']]
+  #   jobs:
+  #   - ${{ each item in variables['resultJsonArray'] }}:
+  #     - job: ProcessItem_${{ replace(item, '-', '_') }}
+  #       displayName: 'Process ${{ item }}'
+  #       steps:
+  #       - script: |
+  #           echo "Processing item: ${{ item }}"
+  #           # Aggiungi qui le azioni specifiche per questo item
+  #         displayName: 'Process ${{ item }}'
   
   # - stage: FinalStage
   #   dependsOn: ProcessItems
