@@ -90,7 +90,7 @@ stages:
       # resultJsonArray: $[stageDependencies.ProcessChanges.ProcessAndConvert.outputs['EchoResultJson.savedResultJsonArray']]
       resultJsonArray: "ciaoo"
     jobs:
-    - ${{ each item in params['APPS'] }}:
+    - ${{ each item in parameters.APPS }}:
       - job: process_item
         displayName: 'Process ${{ item }}'
         steps:
