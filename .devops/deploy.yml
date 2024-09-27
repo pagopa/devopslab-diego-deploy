@@ -88,21 +88,45 @@ stages:
       resultJsonArrayPython: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['ProcessString.resultJson'] ]
       resultJsonArrayBash: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['EchoResultJson.savedResultJsonArray'] ]
     jobs:
-    - job: Display_Variables
-      steps:
-      - bash: |
-          echo "Changed applications:"
-          echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
-          echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
-        displayName: 'Display Changed Apps'
+    - deployment: Display_Variables
+      pool: 
+        name: $(DEV_AGENT_POOL)
+      environment: ${{ parameters.ENV }}
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            - bash: |
+                echo "Changed applications:"
+                echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
+                echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
+              displayName: 'Display Changed Apps'
 
     - ${{ each item in parameters.APPS }}:
-      - job: process_${{ replace(item, '-', '_') }}
-        displayName: 'Process ${{ item }}'
+      - deployment: deploy_${{ replace(item, '-', '_') }}
+        displayName: 'Deploy ${{ item }}'
+        pool: 
+          name: $(DEV_AGENT_POOL)
+        environment: ${{ parameters.ENV }}
         condition: and(succeeded(), contains(variables['resultJsonArrayPython'], '${{ item }}'))
-        steps:
-        - bash: |
-            echo "Processing item: ${{ item }}"
-            echo "This item was found in the changed applications list."
-            # Aggiungi qui le azioni specifiche per questo item
-          displayName: 'Process ${{ item }}'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+              - bash: |
+                  echo "Deploying item: ${{ item }}"
+                  echo "This item was found in the changed applications list."
+                displayName: 'Process ${{ item }}'
+              - bash: |
+                  # Login to ArgoCD
+                  argocd login $ARGOCD_SERVER --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure
+
+                  # Sync the app
+                  app_name=${{ item }}
+                  echo "Syncing app: $app_name"
+                  argocd app sync "$app_name" --prune
+                displayName: 'Sync ArgoCD App: ${{ item }}'
+                env:
+                  ARGOCD_SERVER: $(argocdServer)
+                  ARGOCD_USERNAME: $(argocdUsername)
+                  ARGOCD_PASSWORD: $(argocdPassword)
