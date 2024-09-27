@@ -96,6 +96,7 @@ stages:
         steps:
         - script: |
             echo "Processing item: ${{ item }}"
+            echo "resultJsonArray: ${{ resultJsonArray }}"
             # Aggiungi qui le azioni specifiche per questo item
           displayName: 'Process ${{ item }}'
   
