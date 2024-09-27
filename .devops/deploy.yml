@@ -7,6 +7,7 @@ parameters:
     - dev
     - uat
     - prod
+
 - name: APPS 
   displayName: Environment 
   type: object
@@ -84,19 +85,21 @@ stages:
   - stage: ProcessItems
     dependsOn: ProcessChanges
     variables:
-      resultJsonArray: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['EchoResultJson.savedResultJsonArray'] ]
+      resultJsonArrayPython: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['ProcessString.resultJson'] ]
+      resultJsonArrayBash: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['EchoResultJson.savedResultJsonArray'] ]
     jobs:
-    - job: DisplayChangedApps
+    - job: Display_Variables
       steps:
       - bash: |
           echo "Changed applications:"
-          echo '$(resultJsonArray)'
+          echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
+          echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
         displayName: 'Display Changed Apps'
 
     - ${{ each item in parameters.APPS }}:
       - job: process_${{ replace(item, '-', '_') }}
         displayName: 'Process ${{ item }}'
-        condition: and(succeeded(), contains(variables['resultJsonArray'], '${{ item }}'))
+        condition: and(succeeded(), contains(variables['resultJsonArrayBash'], '${{ item }}'))
         steps:
         - bash: |
             echo "Processing item: ${{ item }}"
