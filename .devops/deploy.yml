@@ -11,10 +11,7 @@ parameters:
   displayName: Environment 
   type: object
   default: [dev]
-  values:
-    - dev
-    - uat
-    - prod
+  values: [dev, uat, prod]
 
 variables:
   - name: directoryPattern
