@@ -14,9 +14,11 @@ parameters:
     - one-color
     - two-color
     - three-color
+
 variables:
   - name: directoryPattern
     value: 'helm/${{ parameters.ENV }}'  # Modify this pattern according to your needs
+
 resources:
   repositories:
     - repository: templates
@@ -24,8 +26,10 @@ resources:
       name: pagopa/azure-pipeline-templates
       ref: refs/tags/v6.8.0
       endpoint: 'azure-devops-github-ro'
+
 pool:
   vmImage: ubuntu-latest
+
 stages:
   - stage: ProcessChanges
     jobs:
@@ -92,7 +96,7 @@ stages:
     - ${{ each item in parameters.APPS }}:
       - job: process_${{ replace(item, '-', '_') }}
         displayName: 'Process ${{ item }}'
-        # condition: and(succeeded(), contains(variables['resultJsonArray'], '${{ item }}'))
+        condition: and(succeeded(), contains(variables['resultJsonArray'], '${{ item }}'))
         steps:
         - bash: |
             echo "Processing item: ${{ item }}"
