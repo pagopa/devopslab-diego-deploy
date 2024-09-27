@@ -99,7 +99,7 @@ stages:
     - ${{ each item in parameters.APPS }}:
       - job: process_${{ replace(item, '-', '_') }}
         displayName: 'Process ${{ item }}'
-        condition: and(succeeded(), contains(variables['resultJsonArrayBash'], '${{ item }}'))
+        condition: and(succeeded(), contains(variables['resultJsonArrayPython'], '${{ item }}'))
         steps:
         - bash: |
             echo "Processing item: ${{ item }}"
