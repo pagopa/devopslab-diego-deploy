@@ -31,9 +31,9 @@ pool:
   vmImage: ubuntu-latest
 
 stages:
-  - stage: IdentifyChanges
+  - stage: ProcessChanges
     jobs:
-    - job: FindChangedDirectories
+    - job: ProcessAndConvert
       pool:
         vmImage: 'ubuntu-latest'
       steps:
