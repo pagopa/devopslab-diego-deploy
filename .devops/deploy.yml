@@ -10,7 +10,6 @@ parameters:
 - name: APPS 
   displayName: Environment 
   type: object
-  default: [dev]
   values:
     - one-color
     - two-color
