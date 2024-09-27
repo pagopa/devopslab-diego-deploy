@@ -8,16 +8,15 @@ parameters:
     - uat
     - prod
 - name: APPS 
-  displayName: Applications to Process
+  displayName: Environment 
   type: object
   default:
+    # - one-color
     - two-color
     - three-color
-
 variables:
   - name: directoryPattern
-    value: 'helm/${{ parameters.ENV }}'
-
+    value: 'helm/${{ parameters.ENV }}'  # Modify this pattern according to your needs
 resources:
   repositories:
     - repository: templates
@@ -25,42 +24,49 @@ resources:
       name: pagopa/azure-pipeline-templates
       ref: refs/tags/v6.8.0
       endpoint: 'azure-devops-github-ro'
-
 pool:
   vmImage: ubuntu-latest
-
 stages:
   - stage: ProcessChanges
     jobs:
     - job: ProcessAndConvert
+      pool:
+        vmImage: 'ubuntu-latest'
       steps:
       - checkout: self
-        fetchDepth: 0
-
+        fetchDepth: 0  # Necessary to get the full history for comparison
+  
       - task: UsePythonVersion@0
         inputs:
           versionSpec: '3.x'
           addToPath: true
-
+  
       - task: PythonScript@0
-        name: ProcessString
+        name: ProcessString  # Aggiungiamo un nome a questo task per riferirci ad esso più tardi
         displayName: 'Process String and Convert to JSON'
         inputs:
           scriptSource: 'inline'
           script: |
             import json
             import subprocess
-
-            command = f"git diff --name-only --diff-filter=d origin/main...HEAD | grep '{variables.directoryPattern}' | xargs -I {{}} dirname {{}} | sort -u | sed 's|{variables.directoryPattern}/||g'"
+            # Esegui il comando bash e ottieni l'output
+            command = "git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u"
             str = subprocess.check_output(command, shell=True).decode('utf-8').strip()
-            print(f"Input string: {str}")
+            print("Input string:", str)
             
-            result_list = str.split('\n') if str else []
-            result_json = json.dumps(result_list)
+            # Passo 1: Rimuovere tutte le voci che non hanno "helm/dev"
+            filtered_list = [item for item in str.split('\n') if "helm/dev" in item]
+            print("Filtered list:", filtered_list)
+            
+            # Passo 2: Rimuovere "helm/dev" dalle voci rimanenti
+            cleaned_list = [item.replace("helm/dev/", "") for item in filtered_list]
+            print("Cleaned list:", cleaned_list)
+            
+            # Passo 3: Convertire il risultato in una stringa JSON
+            result_json = json.dumps(cleaned_list)
             
             print(f'##vso[task.setvariable variable=resultJson;isOutput=true]{result_json}')
             print(f'Risultato JSON: {result_json}')
-
       - task: Bash@3
         name: EchoResultJson
         displayName: 'Echo Result JSON Array'
@@ -69,7 +75,7 @@ stages:
           script: |
             echo "Risultato JSON Array:"
             echo '$(ProcessString.resultJson)'
-            echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(ProcessString.resultJson)"
+            echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(ProcessString.resultJson)]"
 
   - stage: ProcessItems
     dependsOn: ProcessChanges
