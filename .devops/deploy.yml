@@ -91,7 +91,7 @@ stages:
       resultJsonArray: "ciaoo"
     jobs:
     - ${{ each item in parameters.APPS }}:
-      - job: process_${{ item }}
+      - job: process_${{ replace(item, '-', '_') }}
         displayName: 'Process ${{ item }}'
         steps:
         - script: |
