@@ -8,17 +8,15 @@ parameters:
     - uat
     - prod
 - name: APPS 
-  displayName: Environment 
+  displayName: Applications to Process
   type: object
   default:
-    # - one-color
     - two-color
     - three-color
 
-
 variables:
   - name: directoryPattern
-    value: 'helm/${{ parameters.ENV }}'  # Modify this pattern according to your needs
+    value: 'helm/${{ parameters.ENV }}'
 
 resources:
   repositories:
@@ -35,19 +33,17 @@ stages:
   - stage: ProcessChanges
     jobs:
     - job: ProcessAndConvert
-      pool:
-        vmImage: 'ubuntu-latest'
       steps:
       - checkout: self
-        fetchDepth: 0  # Necessary to get the full history for comparison
-  
+        fetchDepth: 0
+
       - task: UsePythonVersion@0
         inputs:
           versionSpec: '3.x'
           addToPath: true
-  
+
       - task: PythonScript@0
-        name: ProcessString  # Aggiungiamo un nome a questo task per riferirci ad esso più tardi
+        name: ProcessString
         displayName: 'Process String and Convert to JSON'
         inputs:
           scriptSource: 'inline'
@@ -55,21 +51,12 @@ stages:
             import json
             import subprocess
 
-            # Esegui il comando bash e ottieni l'output
-            command = "git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u"
+            command = f"git diff --name-only --diff-filter=d origin/main...HEAD | grep '{variables.directoryPattern}' | xargs -I {{}} dirname {{}} | sort -u | sed 's|{variables.directoryPattern}/||g'"
             str = subprocess.check_output(command, shell=True).decode('utf-8').strip()
-            print("Input string:", str)
+            print(f"Input string: {str}")
             
-            # Passo 1: Rimuovere tutte le voci che non hanno "helm/dev"
-            filtered_list = [item for item in str.split('\n') if "helm/dev" in item]
-            print("Filtered list:", filtered_list)
-            
-            # Passo 2: Rimuovere "helm/dev" dalle voci rimanenti
-            cleaned_list = [item.replace("helm/dev/", "") for item in filtered_list]
-            print("Cleaned list:", cleaned_list)
-            
-            # Passo 3: Convertire il risultato in una stringa JSON
-            result_json = json.dumps(cleaned_list)
+            result_list = str.split('\n') if str else []
+            result_json = json.dumps(result_list)
             
             print(f'##vso[task.setvariable variable=resultJson;isOutput=true]{result_json}')
             print(f'Risultato JSON: {result_json}')
@@ -82,91 +69,27 @@ stages:
           script: |
             echo "Risultato JSON Array:"
             echo '$(ProcessString.resultJson)'
-            echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(ProcessString.resultJson)]"
+            echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(ProcessString.resultJson)"
 
   - stage: ProcessItems
     dependsOn: ProcessChanges
     variables:
-      resultJsonArray: $[stageDependencies.ProcessChanges.ProcessAndConvert.outputs['EchoResultJson.savedResultJsonArray']]
-      # resultJsonArray: "ciaoo"
+      resultJsonArray: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['EchoResultJson.savedResultJsonArray'] ]
     jobs:
+    - job: DisplayChangedApps
+      steps:
+      - bash: |
+          echo "Changed applications:"
+          echo '$(resultJsonArray)'
+        displayName: 'Display Changed Apps'
+
     - ${{ each item in parameters.APPS }}:
       - job: process_${{ replace(item, '-', '_') }}
         displayName: 'Process ${{ item }}'
+        condition: and(succeeded(), contains(variables['resultJsonArray'], '${{ item }}'))
         steps:
-        - script: |
+        - bash: |
             echo "Processing item: ${{ item }}"
-            echo "resultJsonArray: $(resultJsonArray)"
+            echo "This item was found in the changed applications list."
             # Aggiungi qui le azioni specifiche per questo item
           displayName: 'Process ${{ item }}'
-  
-  # - stage: FinalStage
-  #   dependsOn: ProcessItems
-  #   jobs:
-  #   - job: FinalJob
-  #     steps:
-  #     - script: |
-  #         echo "All items have been processed"
-  #       displayName: 'Final Step'
-
-  # - stage: SyncApps
-  #   dependsOn: IdentifyChanges
-  #   jobs:
-  #   - ${{ each dir in dependencies.IdentifyChanges.outputs['FindChangedDirectories.SetVars.filteredDirs'] }}:
-  #     - job: Sync_${{ replace(dir, '/', '_') }}
-  #       pool:
-  #         vmImage: 'ubuntu-latest'
-  #       steps:
-  #       - task: InstallSSHKey@0
-  #         inputs:
-  #           knownHostsEntry: 'KNOWN_HOSTS_ENTRY'
-  #           sshPublicKey: '$(ARGOCD_SSH_PUBLIC_KEY)'
-  #           sshKeySecureFile: 'argocd_ssh_key'
-  #         displayName: 'Install SSH key for ArgoCD'
-
-  #       - bash: |
-  #           # Login to ArgoCD
-  #           argocd login $ARGOCD_SERVER --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure
-
-  #           # Sync the app
-  #           app_name=$(basename "${{ dir }}")
-  #           echo "Syncing app: $app_name"
-  #           argocd app sync "$app_name" --prune
-  #         displayName: 'Sync ArgoCD App: ${{ dir }}'
-  #         env:
-  #           ARGOCD_SERVER: $(argocdServer)
-  #           ARGOCD_USERNAME: $(argocdUsername)
-  #           ARGOCD_PASSWORD: $(argocdPassword)
-
-  # - stage: RunNewmanTests
-  #   dependsOn: SyncApps
-  #   jobs:
-  #   - ${{ each dir in dependencies.IdentifyChanges.outputs['FindChangedDirectories.SetVars.filteredDirs'] }}:
-  #     - job: NewmanTest_${{ replace(dir, '/', '_') }}
-  #       pool:
-  #         vmImage: 'ubuntu-latest'
-  #       steps:
-  #       - task: NodeTool@0
-  #         inputs:
-  #           versionSpec: '14.x'
-  #         displayName: 'Install Node.js'
-
-  #       - script: |
-  #           npm install -g newman
-  #         displayName: 'Install Newman'
-
-  #       - script: |
-  #           app_name=$(basename "${{ dir }}")
-  #           collection_path="${{ dir }}/tests/postman_collection.json"
-  #           environment_path="${{ dir }}/tests/postman_environment.json"
-            
-  #           if [ -f "$collection_path" ]; then
-  #             if [ -f "$environment_path" ]; then
-  #               newman run "$collection_path" -e "$environment_path"
-  #             else
-  #               newman run "$collection_path"
-  #             fi
-  #           else
-  #             echo "No Postman collection found for $app_name. Skipping Newman tests."
-  #           fi
-  #         displayName: 'Run Newman Tests for ${{ dir }}'
