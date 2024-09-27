@@ -10,9 +10,10 @@ parameters:
 - name: APPS 
   displayName: Environment 
   type: object
-  values:
+  default:
     - one-color
     - two-color
+
 
 variables:
   - name: directoryPattern
