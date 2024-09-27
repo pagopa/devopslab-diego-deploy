@@ -29,7 +29,7 @@ resources:
       endpoint: 'azure-devops-github-ro'
 
 pool:
-  name: $(DEV_AGENT_POOL)
+  vmImage: ubuntu-latest
 
 stages:
   - stage: IdentifyChanges
