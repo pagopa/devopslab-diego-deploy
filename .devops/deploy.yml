@@ -13,6 +13,7 @@ parameters:
   default:
     - one-color
     - two-color
+    - three-color
 
 
 variables:
@@ -89,8 +90,8 @@ stages:
       # resultJsonArray: $[stageDependencies.ProcessChanges.ProcessAndConvert.outputs['EchoResultJson.savedResultJsonArray']]
       resultJsonArray: ["ciao"]
     jobs:
-    - ${{ each item in variables['resultJsonArray'] }}:
-      - job: ProcessItem_${{ replace(item, '-', '_') }}
+    - ${{ each item in params['APPS'] }}:
+      - job: process_item
         displayName: 'Process ${{ item }}'
         steps:
         - script: |
