@@ -81,7 +81,7 @@ stages:
           script: |
             echo "Risultato JSON Array:"
             echo '$(ProcessString.resultJson)'
-            echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(ProcessString.resultJson)"
+            echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]ciao]"
 
   - stage: ProcessItems
     dependsOn: ProcessChanges
