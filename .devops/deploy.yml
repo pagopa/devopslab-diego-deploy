@@ -41,8 +41,8 @@ stages:
         fetchDepth: 0  # Necessary to get the full history for comparison
 
       - bash: |
-          changed_dirs_raw=$(git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u | tr ' ' '\n') || { echo "Error: Failed to get changed directories."; exit 1; }
-          changed_dirs_raw = $changed_dirs
+          changed_dirs_raw=$(git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u) || { echo "Error: Failed to get changed directories."; exit 1; }
+          changed_dirs_list = $changed_dirs_raw | tr ' ' '\n'
           [ -z "$changed_dirs_list" ] && { echo "Error: No changed directories found."; exit 1; }
           echo $changed_dirs_list
 
