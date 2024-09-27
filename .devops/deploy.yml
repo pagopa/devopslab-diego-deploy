@@ -70,7 +70,7 @@ stages:
             # Passo 3: Convertire il risultato in una stringa JSON
             result_json = json.dumps(cleaned_list)
             
-            print(f'##vso[task.setvariable variable={resultJson};isOutput=true]{result_json}')
+            print(f'##vso[task.setvariable variable=resultJson;isOutput=true]{result_json}')
             print(f'Risultato JSON: {result_json}')
 
   # - stage: ProcessItems
