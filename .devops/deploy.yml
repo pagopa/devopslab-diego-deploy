@@ -39,15 +39,6 @@ stages:
       steps:
       - checkout: self
         fetchDepth: 0  # Necessary to get the full history for comparison
-
-      - task: Bash@3
-        displayName: 'Get changed directories'
-        inputs:
-          targetType: 'inline'
-          script: |
-            CHANGED_DIRS=$(git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u)
-            echo $CHANGED_DIRS
-            echo "##vso[task.setvariable variable=changedDirs]$CHANGED_DIRS"
   
       - task: UsePythonVersion@0
         inputs:
@@ -61,13 +52,15 @@ stages:
           scriptSource: 'inline'
           script: |
             import json
-            
-            # La stringa originale ottenuta dal comando git
-            str = "$(changedDirs)"
+            import subprocess
+
+            # Esegui il comando bash e ottieni l'output
+            command = "git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u"
+            str = subprocess.check_output(command, shell=True).decode('utf-8').strip()
             print("Input string:", str)
             
             # Passo 1: Rimuovere tutte le voci che non hanno "helm/dev"
-            filtered_list = [item for item in str.split() if "helm/dev" in item]
+            filtered_list = [item for item in str.split('\n') if "helm/dev" in item]
             print("Filtered list:", filtered_list)
             
             # Passo 2: Rimuovere "helm/dev" dalle voci rimanenti
