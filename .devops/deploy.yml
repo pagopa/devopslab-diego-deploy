@@ -41,13 +41,14 @@ stages:
         fetchDepth: 0  # Necessary to get the full history for comparison
 
       - bash: |
-          changed_dirs=$(git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u | tr ' ' '\n') || { echo "Error: Failed to get changed directories."; exit 1; }
+          changed_dirs_raw=$(git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u | tr ' ' '\n') || { echo "Error: Failed to get changed directories."; exit 1; }
           [ -z "$changed_dirs" ] && { echo "Error: No changed directories found."; exit 1; }
-          echo $changed_dirs | tr ' ' '\n'
+          changed_dirs_list = $changed_dirs | tr ' ' '\n'
+          echo $changed_dirs_list
 
           echo "---"
 
-          filtered_dirs=$(echo "$changed_dirs" | grep "helm/dev") || { echo "Error: grep did not find any directories containing 'helm/dev'."; exit 1; }
+          filtered_dirs=$(echo "$changed_dirs_list" | grep "helm/dev") || { echo "Error: grep did not find any directories containing 'helm/dev'."; exit 1; }
           [ -z "$filtered_dirs" ] && { echo "Error: No directories containing 'helm/dev' found."; exit 1; }
 
           filtered_dirs=$(echo "$filtered_dirs" | xargs -I {} find {} -type d) || { echo "Error: find did not find any subdirectories."; exit 1; }
