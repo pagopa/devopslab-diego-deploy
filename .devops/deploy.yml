@@ -87,8 +87,8 @@ stages:
   - stage: ProcessItems
     dependsOn: ProcessChanges
     variables:
-      # resultJsonArray: $[stageDependencies.ProcessChanges.ProcessAndConvert.outputs['EchoResultJson.savedResultJsonArray']]
-      resultJsonArray: "ciaoo"
+      resultJsonArray: $[stageDependencies.ProcessChanges.ProcessAndConvert.outputs['EchoResultJson.savedResultJsonArray']]
+      # resultJsonArray: "ciaoo"
     jobs:
     - ${{ each item in parameters.APPS }}:
       - job: process_${{ replace(item, '-', '_') }}
