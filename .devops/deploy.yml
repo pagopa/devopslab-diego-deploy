@@ -43,7 +43,7 @@ stages:
       - bash: |
           changed_dirs=$(git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u | tr ' ' '\n') || { echo "Error: Failed to get changed directories."; exit 1; }
           [ -z "$changed_dirs" ] && { echo "Error: No changed directories found."; exit 1; }
-          echo $changed_dirs
+          echo $changed_dirs | | tr ' ' '\n'
 
           echo "---"
 
