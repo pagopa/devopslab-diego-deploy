@@ -11,7 +11,7 @@ parameters:
   displayName: Environment 
   type: object
   default:
-    # - one-color
+    - one-color
     - two-color
     - three-color
 variables:
