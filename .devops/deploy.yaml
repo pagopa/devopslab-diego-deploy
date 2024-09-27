@@ -1,6 +1,24 @@
+parameters:
+- name: ENV 
+  displayName: Environment 
+  type: string
+  default: dev
+  values:
+    - dev
+    - uat
+    - prod
+- name: ENV2 
+  displayName: Environment 
+  type: string
+  default: dev
+  values:
+    - dev
+    - uat
+    - prod
+
 variables:
   - name: directoryPattern
-    value: 'dev'  # Modify this pattern according to your needs
+    value: 'helm/dev'  # Modify this pattern according to your needs
 
 resources:
   repositories:
@@ -24,80 +42,95 @@ stages:
         fetchDepth: 0  # Necessary to get the full history for comparison
 
       - bash: |
-          # 1. Find changed directories
-          changed_dirs=$(git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u)
-          echo "Changed directories: $changed_dirs"
+          changed_dirs=$(git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u) || { echo "Error: Failed to get changed directories."; exit 1; }
+          [ -z "$changed_dirs" ] && { echo "Error: No changed directories found."; exit 1; }
+          echo $changed_dirs
 
-          # 2. Filter directories based on pattern and find all subdirectories
-          filtered_dirs=$(echo "$changed_dirs" | grep -E "^$(echo $DIRECTORY_PATTERN | sed 's/\*/.*/g')" | xargs -I {} find {} -type d)
-          echo "Filtered directories: $filtered_dirs"
+          echo "---"
 
-          # Create a JSON array of the filtered directories
-          json_array=$(echo "$filtered_dirs" | jq -R . | jq -s .)
-          echo "##vso[task.setvariable variable=filteredDirs;isOutput=true]$json_array"
+          filtered_dirs=$(echo "$changed_dirs" | grep "helm/dev") || { echo "Error: grep did not find any directories containing 'helm/dev'."; exit 1; }
+          [ -z "$filtered_dirs" ] && { echo "Error: No directories containing 'helm/dev' found."; exit 1; }
+
+          filtered_dirs=$(echo "$filtered_dirs" | xargs -I {} find {} -type d) || { echo "Error: find did not find any subdirectories."; exit 1; }
+          [ -z "$filtered_dirs" ] && { echo "Error: No subdirectories found."; exit 1; }
+          echo $filtered_dirs
+
+          echo "---"
+
+          folder_only=$(echo $filtered_dirs | sed "s|helm/dev/||") || { echo "Error: sed failed to process directories."; exit 1; }
+          [ -z "$folder_only" ] && { echo "Error: No directories processed."; exit 1; }
+          echo $folder_only
+
+          echo "----"
+
+          json_folders=$(echo "$folder_only" | jq -R . | jq -s .) || { echo "Error: jq failed to convert directories to JSON array."; exit 1; }
+          [ -z "$json_folders" ] && { echo "Error: No JSON array created."; exit 1; }
+          echo $json_folders
+
+          echo "##vso[task.setvariable variable=filteredDirs;isOutput=true]$json_folders"
         name: SetVars
         displayName: 'Find and filter changed directories'
         env:
           DIRECTORY_PATTERN: $(directoryPattern)
 
-  - stage: SyncApps
-    dependsOn: IdentifyChanges
-    jobs:
-    - ${{ each dir in dependencies.IdentifyChanges.outputs['FindChangedDirectories.SetVars.filteredDirs'] }}:
-      - job: Sync_${{ replace(dir, '/', '_') }}
-        pool:
-          vmImage: 'ubuntu-latest'
-        steps:
-        - task: InstallSSHKey@0
-          inputs:
-            knownHostsEntry: 'KNOWN_HOSTS_ENTRY'
-            sshPublicKey: '$(ARGOCD_SSH_PUBLIC_KEY)'
-            sshKeySecureFile: 'argocd_ssh_key'
-          displayName: 'Install SSH key for ArgoCD'
+  # - stage: SyncApps
+  #   dependsOn: IdentifyChanges
+  #   jobs:
+  #   - ${{ each dir in dependencies.IdentifyChanges.outputs['FindChangedDirectories.SetVars.filteredDirs'] }}:
+  #     - job: Sync_${{ replace(dir, '/', '_') }}
+  #       pool:
+  #         vmImage: 'ubuntu-latest'
+  #       steps:
+  #       - task: InstallSSHKey@0
+  #         inputs:
+  #           knownHostsEntry: 'KNOWN_HOSTS_ENTRY'
+  #           sshPublicKey: '$(ARGOCD_SSH_PUBLIC_KEY)'
+  #           sshKeySecureFile: 'argocd_ssh_key'
+  #         displayName: 'Install SSH key for ArgoCD'
 
-        - bash: |
-            # Login to ArgoCD
-            argocd login $ARGOCD_SERVER --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure
+  #       - bash: |
+  #           # Login to ArgoCD
+  #           argocd login $ARGOCD_SERVER --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure
 
-            # Sync the app
-            app_name=$(basename "${{ dir }}")
-            echo "Syncing app: $app_name"
-            argocd app sync "$app_name" --prune
-          displayName: 'Sync ArgoCD App: ${{ dir }}'
-          env:
-            ARGOCD_SERVER: $(argocdServer)
-            ARGOCD_USERNAME: $(argocdUsername)
-            ARGOCD_PASSWORD: $(argocdPassword)
+  #           # Sync the app
+  #           app_name=$(basename "${{ dir }}")
+  #           echo "Syncing app: $app_name"
+  #           argocd app sync "$app_name" --prune
+  #         displayName: 'Sync ArgoCD App: ${{ dir }}'
+  #         env:
+  #           ARGOCD_SERVER: $(argocdServer)
+  #           ARGOCD_USERNAME: $(argocdUsername)
+  #           ARGOCD_PASSWORD: $(argocdPassword)
 
-  - stage: RunNewmanTests
-    dependsOn: SyncApps
-    jobs:
-    - ${{ each dir in dependencies.IdentifyChanges.outputs['FindChangedDirectories.SetVars.filteredDirs'] }}:
-      - job: NewmanTest_${{ replace(dir, '/', '_') }}
-        pool:
-          vmImage: 'ubuntu-latest'
-        steps:
-        - task: NodeTool@0
-          inputs:
-            versionSpec: '14.x'
-          displayName: 'Install Node.js'
+  # - stage: RunNewmanTests
+  #   dependsOn: SyncApps
+  #   jobs:
+  #   - ${{ each dir in dependencies.IdentifyChanges.outputs['FindChangedDirectories.SetVars.filteredDirs'] }}:
+  #     - job: NewmanTest_${{ replace(dir, '/', '_') }}
+  #       pool:
+  #         vmImage: 'ubuntu-latest'
+  #       steps:
+  #       - task: NodeTool@0
+  #         inputs:
+  #           versionSpec: '14.x'
+  #         displayName: 'Install Node.js'
 
-        - script: |
-            npm install -g newman
-          displayName: 'Install Newman'
+  #       - script: |
+  #           npm install -g newman
+  #         displayName: 'Install Newman'
 
-        - script: |
-            app_name=$(basename "${{ dir }}")
-            collection_path="${{ dir }}/tests/postman_collection.json"
-            environment_path="${{ dir }}/tests/postman_environment.json"
+  #       - script: |
+  #           app_name=$(basename "${{ dir }}")
+  #           collection_path="${{ dir }}/tests/postman_collection.json"
+  #           environment_path="${{ dir }}/tests/postman_environment.json"
             
-            if [ -f "$collection_path" ]; then
-              if [ -f "$environment_path" ]; then
-                newman run "$collection_path" -e "$environment_path"
-              else
-                newman run "$collection_path"
-              fi
-            else
-              echo "No Postman collection found for $app_name. Skipping Newman tests."
-            fi
-          displayName: 'Run Newman Tests for ${{ dir }}'
+  #           if [ -f "$collection_path" ]; then
+  #             if [ -f "$environment_path" ]; then
+  #               newman run "$collection_path" -e "$environment_path"
+  #             else
+  #               newman run "$collection_path"
+  #             fi
+  #           else
+  #             echo "No Postman collection found for $app_name. Skipping Newman tests."
+  #           fi
+  #         displayName: 'Run Newman Tests for ${{ dir }}'
