@@ -64,12 +64,15 @@ stages:
             
             # La stringa originale ottenuta dal comando git
             str = "$(changedDirs)"
+            print("Input string:", str)
             
             # Passo 1: Rimuovere tutte le voci che non hanno "helm/dev"
             filtered_list = [item for item in str.split() if "helm/dev" in item]
+            print("Filtered list:", filtered_list)
             
             # Passo 2: Rimuovere "helm/dev" dalle voci rimanenti
             cleaned_list = [item.replace("helm/dev/", "") for item in filtered_list]
+            print("Cleaned list:", cleaned_list)
             
             # Passo 3: Convertire il risultato in una stringa JSON
             result_json = json.dumps(cleaned_list)
