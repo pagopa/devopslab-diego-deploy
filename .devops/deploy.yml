@@ -46,6 +46,7 @@ stages:
           targetType: 'inline'
           script: |
             CHANGED_DIRS=$(git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u)
+            echo $CHANGED_DIRS
             echo "##vso[task.setvariable variable=changedDirs]$CHANGED_DIRS"
   
       - task: UsePythonVersion@0
