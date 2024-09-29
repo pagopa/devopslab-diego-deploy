@@ -111,14 +111,14 @@ stages:
       - PrGitChangedFolders
     condition: always()
     variables:
-      ${{ if eq(variables.isCompleteRun, false) }}:
+      # ${{ if eq(variables.isCompleteRun, false) }}:
         resultJsonArrayPython: $[dependencies.PrGitChangedFolders.outputs['FindGitChangedFolder.GrepGitFolders.resultJson']]
         resultJsonArrayBash: $[dependencies.PrGitChangedFolders.outputs['FindGitChangedFolder.EchoResultJson.savedResultJsonArray']]
         dd: false
-      ${{ if eq(variables.isCompleteRun, true) }}:
-        resultJsonArrayPython: '${{ convertToJson(parameters.APPS) }}'
-        resultJsonArrayBash: '${{ convertToJson(parameters.APPS) }}'
-        dd: true
+      # ${{ if eq(variables.isCompleteRun, true) }}:
+      #   resultJsonArrayPython: '${{ convertToJson(parameters.APPS) }}'
+      #   resultJsonArrayBash: '${{ convertToJson(parameters.APPS) }}'
+      #   dd: true
     jobs:
     - deployment: update_root_app
       pool: 
@@ -134,7 +134,7 @@ stages:
                 echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
                 echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
                 echo 'resultJsonArrayPython: ${{ variables.resultJsonArrayPython }}'
-                echo 'dd: $(dd)'
+                echo 'dd: ${{ variables.resultJsonArrayPython }}'
                 echo 'other: $[dependencies.PrGitChangedFolders.outputs['FindGitChangedFolder.GrepGitFolders.resultJson']]'
 
                 # Login to ArgoCD
