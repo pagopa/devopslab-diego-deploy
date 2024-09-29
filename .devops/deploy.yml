@@ -1,7 +1,12 @@
 trigger: none  # Disabilita i trigger automatici su push
 
 pr:
-  - main  # Abilita il trigger solo per le PR verso main
+  branches:
+    include:
+      - main
+  paths:  
+    include:
+    - 'helm/dev/**'
 
 schedules:
 - cron: "0 0 * * *"
