@@ -133,6 +133,7 @@ stages:
                 echo "Changed applications:"
                 echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
                 echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
+                echo 'resultJsonArrayPython: ${{ variables.resultJsonArrayPython }}'
                 echo 'dd: $(dd)'
                 echo 'other: $[dependencies.PrGitChangedFolders.outputs['FindGitChangedFolder.GrepGitFolders.resultJson']]'
 
