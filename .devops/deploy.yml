@@ -9,7 +9,7 @@ pr:
     - 'helm/dev/**'
 
 schedules:
-- cron: "55 0 * * *"
+- cron: "12 23 * * *"
   displayName: Nightly batch run
   branches:
     include:
