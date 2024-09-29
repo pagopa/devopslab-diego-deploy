@@ -114,7 +114,8 @@ stages:
       ${{ if eq(variables.isCompleteRun, 'False') }}:
         resultJsonArrayPython: $[ stageDependencies.PrGitChangedFolders.FindGitChangedFolder.outputs['GrepGitFolders.resultJson'] ]
         resultJsonArrayBash: $[ stageDependencies.PrGitChangedFolders.FindGitChangedFolder.outputs['EchoResultJson.savedResultJsonArray'] ]
-      ${{ if eq(variables.isCompleteRun, 'True') }}:
+      ${{ else }}:
+      # ${{ if eq(variables.isCompleteRun, 'True') }}:
         resultJsonArrayPython: '${{ convertToJson(parameters.APPS) }}'
         resultJsonArrayBash: '${{ convertToJson(parameters.APPS) }}'
     jobs:
