@@ -111,13 +111,12 @@ stages:
       - PrGitChangedFolders
     condition: always()
     variables:
-      ${{ if eq(variables.isCompleteRun, 'False') }}:
-        resultJsonArrayPython: '${{ convertToJson(parameters.APPS) }}'
-        resultJsonArrayBash: '${{ convertToJson(parameters.APPS) }}'
-      ${{ else }}:
-      # ${{ if eq(variables.isCompleteRun, 'True') }}:
+      ${{ if eq(variables['isCompleteRun'], 'False') }}:
         resultJsonArrayPython: $[ stageDependencies.PrGitChangedFolders.FindGitChangedFolder.outputs['GrepGitFolders.resultJson'] ]
         resultJsonArrayBash: $[ stageDependencies.PrGitChangedFolders.FindGitChangedFolder.outputs['EchoResultJson.savedResultJsonArray'] ]
+      ${{ else }}:
+          resultJsonArrayPython: '${{ convertToJson(parameters.APPS) }}'
+          resultJsonArrayBash: '${{ convertToJson(parameters.APPS) }}'
     jobs:
     - deployment: update_root_app
       pool: 
