@@ -104,21 +104,19 @@ stages:
           script: |
             echo "Risultato JSON Array:"
             echo '$(GrepGitFolders.resultJson)'
-            echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(GrepGitFolders.resultJson)]"
+            echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(GrepGitFolders.resultJson)"
 
   - stage: ProcessItems
     dependsOn: 
       - PrGitChangedFolders
     condition: always()
     variables:
-      # ${{ if eq(variables.isCompleteRun, false) }}:
-        resultJsonArrayPython: $[stageDependencies.PrGitChangedFolders.outputs['FindGitChangedFolder.GrepGitFolders.resultJson']]
-        resultJsonArrayBash: $[stageDependencies.PrGitChangedFolders.outputs['FindGitChangedFolder.EchoResultJson.savedResultJsonArray']]
-        dd: false
-      # ${{ if eq(variables.isCompleteRun, true) }}:
-      #   resultJsonArrayPython: '${{ convertToJson(parameters.APPS) }}'
-      #   resultJsonArrayBash: '${{ convertToJson(parameters.APPS) }}'
-      #   dd: true
+      ${{ if eq(variables.isCompleteRun, false) }}:
+        resultJsonArrayPython: $[ stageDependencies.PrGitChangedFolders.FindGitChangedFolder.outputs['GrepGitFolders.resultJson'] ]
+        resultJsonArrayBash: $[ stageDependencies.PrGitChangedFolders.FindGitChangedFolder.outputs['EchoResultJson.savedResultJsonArray'] ]
+      ${{ if eq(variables.isCompleteRun, true) }}:
+        resultJsonArrayPython: '${{ convertToJson(parameters.APPS) }}'
+        resultJsonArrayBash: '${{ convertToJson(parameters.APPS) }}'
     jobs:
     - deployment: update_root_app
       pool: 
@@ -134,8 +132,6 @@ stages:
                 echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
                 echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
                 echo 'resultJsonArrayPython: ${{ variables.resultJsonArrayPython }}'
-                echo 'dd: ${{ variables.resultJsonArrayPython }}'
-                echo 'other: $[dependencies.PrGitChangedFolders.outputs['FindGitChangedFolder.GrepGitFolders.resultJson']]'
 
                 # Login to ArgoCD
                 curl -sSL -o /tmp/argocd-v2.12.4 https://github.com/argoproj/argo-cd/releases/download/v2.12.4/argocd-linux-amd64
@@ -162,7 +158,7 @@ stages:
             or(
               and(
                 eq(variables.isCompleteRun, false),
-                contains(variables['resultJsonArrayPython'], '${{ item }}')
+                contains(variables.resultJsonArrayPython, '${{ item }}')
               ),
               eq(variables.isCompleteRun, true)
             )
