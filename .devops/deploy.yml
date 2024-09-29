@@ -1,5 +1,5 @@
 trigger:
-  - pipeline-by-trigger
+  - main
 
 parameters:
 - name: ENV 
