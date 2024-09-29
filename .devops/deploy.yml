@@ -1,5 +1,5 @@
 trigger:
-  - main
+  - pipeline-by-trigger
 
 parameters:
 - name: ENV 
@@ -60,7 +60,7 @@ stages:
           script: |
             import json
             import subprocess
-            
+
             command = "git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u"
             str = subprocess.check_output(command, shell=True).decode('utf-8').strip()
             filtered_list = [item for item in str.split('\n') if "helm/dev" in item]
