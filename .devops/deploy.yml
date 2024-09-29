@@ -111,7 +111,7 @@ stages:
       - PrGitChangedFolders
     condition: always()
     variables:
-      ${{ if eq(variables['isCompleteRun'], 'False') }}:
+      ${{ if eq(variables.isCompleteRun, false) }}:
         resultJsonArrayPython: $[ stageDependencies.PrGitChangedFolders.FindGitChangedFolder.outputs['GrepGitFolders.resultJson'] ]
         resultJsonArrayBash: $[ stageDependencies.PrGitChangedFolders.FindGitChangedFolder.outputs['EchoResultJson.savedResultJsonArray'] ]
       ${{ else }}:
