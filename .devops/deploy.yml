@@ -52,10 +52,10 @@ pool:
   vmImage: ubuntu-latest
 
 stages:
-  - stage: ProcessChanges
+  - stage: PrGitChangedFolders
     condition: and(succeeded(), eq(variables.isCompleteRun, false))
     jobs:
-    - job: ProcessAndConvert
+    - job: FindGitChangedFolder
       pool:
         vmImage: 'ubuntu-latest'
       steps:
@@ -68,7 +68,7 @@ stages:
           addToPath: true
   
       - task: PythonScript@0
-        name: ProcessString
+        name: GrepGitFolders
         displayName: 'Process String and Convert to JSON'
         inputs:
           scriptSource: 'inline'
@@ -103,20 +103,22 @@ stages:
           targetType: 'inline'
           script: |
             echo "Risultato JSON Array:"
-            echo '$(ProcessString.resultJson)'
-            echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(ProcessString.resultJson)]"
+            echo '$(GrepGitFolders.resultJson)'
+            echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(GrepGitFolders.resultJson)]"
 
   - stage: ProcessItems
     dependsOn: 
-      - ProcessChanges
-    condition: always()  # Esegui sempre questo stage
+      - PrGitChangedFolders
+    condition: always()
     variables:
       ${{ if eq(variables.isCompleteRun, false) }}:
-        resultJsonArrayPython: $[ dependencies.ProcessChanges.outputs['ProcessAndConvert.ProcessString.resultJson'] ]
-        resultJsonArrayBash: $[ dependencies.ProcessChanges.outputs['ProcessAndConvert.EchoResultJson.savedResultJsonArray'] ]
+        resultJsonArrayPython: $[dependencies.PrGitChangedFolders.outputs['FindGitChangedFolder.GrepGitFolders.resultJson']]
+        resultJsonArrayBash: $[dependencies.PrGitChangedFolders.outputs['FindGitChangedFolder.EchoResultJson.savedResultJsonArray']]
+        dd: false
       ${{ if eq(variables.isCompleteRun, true) }}:
         resultJsonArrayPython: '${{ convertToJson(parameters.APPS) }}'
         resultJsonArrayBash: '${{ convertToJson(parameters.APPS) }}'
+        dd: true
     jobs:
     - deployment: update_root_app
       pool: 
@@ -131,6 +133,8 @@ stages:
                 echo "Changed applications:"
                 echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
                 echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
+                echo 'dd: $(dd)'
+                echo 'other: $[dependencies.PrGitChangedFolders.outputs['FindGitChangedFolder.GrepGitFolders.resultJson']]'
 
                 # Login to ArgoCD
                 curl -sSL -o /tmp/argocd-v2.12.4 https://github.com/argoproj/argo-cd/releases/download/v2.12.4/argocd-linux-amd64
