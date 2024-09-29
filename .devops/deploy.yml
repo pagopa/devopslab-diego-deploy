@@ -88,7 +88,7 @@ stages:
       resultJsonArrayPython: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['ProcessString.resultJson'] ]
       resultJsonArrayBash: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['EchoResultJson.savedResultJsonArray'] ]
     jobs:
-    - deployment: Display_Variables
+    - deployment: update_root_app
       pool: 
         name: $(DEV_AGENT_POOL)
       environment: ${{ parameters.ENV }}
@@ -100,6 +100,17 @@ stages:
                 echo "Changed applications:"
                 echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
                 echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
+
+                # Login to ArgoCD
+                curl -sSL -o /tmp/argocd-v2.12.4 https://github.com/argoproj/argo-cd/releases/download/v2.12.4/argocd-linux-amd64
+                chmod +x /tmp/argocd-v2.12.4
+                sudo mv /tmp/argocd-v2.12.4 /usr/local/bin/argocd 
+
+                argocd login $ARGOCD_SERVER --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure --grpc-web
+
+                # Sync the app
+                argocd app sync root-diego-app --prune
+                echo "✅ root-app synched"
               displayName: 'Display Changed Apps'
 
     - ${{ each item in parameters.APPS }}:
@@ -108,6 +119,7 @@ stages:
         pool: 
           name: $(DEV_AGENT_POOL)
         environment: ${{ parameters.ENV }}
+        dependsOn: update_root_app
         condition: and(succeeded(), contains(variables['resultJsonArrayPython'], '${{ item }}'))
         strategy:
           runOnce:
@@ -127,8 +139,9 @@ stages:
 
                   # Sync the app
                   app_name=${{ item }}
-                  echo "Syncing app: $app_name"
                   argocd app sync "$app_name" --prune
+                  echo "✅ Syncing app: $app_name"
+
                 displayName: 'Sync ArgoCD App: ${{ item }}'
                 env:
                   ARGOCD_SERVER: $(argocdServer)
