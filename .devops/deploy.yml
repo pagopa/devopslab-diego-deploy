@@ -1,0 +1,149 @@
+parameters:
+- name: ENV 
+  displayName: Environment 
+  type: string
+  default: dev
+  values:
+    - dev
+    - uat
+    - prod
+
+- name: APPS 
+  displayName: Environment 
+  type: object
+  default:
+    - one-color
+    - two-color
+    - three-color
+
+variables:
+  - name: directoryPattern
+    value: 'helm/${{ parameters.ENV }}'  # Modify this pattern according to your needs
+
+resources:
+  repositories:
+    - repository: templates
+      type: github
+      name: pagopa/azure-pipeline-templates
+      ref: refs/tags/v6.8.0
+      endpoint: 'azure-devops-github-ro'
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: ProcessChanges
+    jobs:
+    - job: ProcessAndConvert
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+      - checkout: self
+        fetchDepth: 0  # Necessary to get the full history for comparison
+  
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.x'
+          addToPath: true
+  
+      - task: PythonScript@0
+        name: ProcessString  # Aggiungiamo un nome a questo task per riferirci ad esso più tardi
+        displayName: 'Process String and Convert to JSON'
+        inputs:
+          scriptSource: 'inline'
+          script: |
+            import json
+            import subprocess
+            # Esegui il comando bash e ottieni l'output
+            command = "git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u"
+            str = subprocess.check_output(command, shell=True).decode('utf-8').strip()
+            print("Input string:", str)
+            
+            # Passo 1: Rimuovere tutte le voci che non hanno "helm/dev"
+            filtered_list = [item for item in str.split('\n') if "helm/dev" in item]
+            print("Filtered list:", filtered_list)
+            
+            # Passo 2: Rimuovere "helm/dev" dalle voci rimanenti
+            cleaned_list = [item.replace("helm/dev/", "") for item in filtered_list]
+            print("Cleaned list:", cleaned_list)
+            
+            # Passo 3: Convertire il risultato in una stringa JSON
+            result_json = json.dumps(cleaned_list)
+            
+            print(f'##vso[task.setvariable variable=resultJson;isOutput=true]{result_json}')
+            print(f'Risultato JSON: {result_json}')
+      - task: Bash@3
+        name: EchoResultJson
+        displayName: 'Echo Result JSON Array'
+        inputs:
+          targetType: 'inline'
+          script: |
+            echo "Risultato JSON Array:"
+            echo '$(ProcessString.resultJson)'
+            echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(ProcessString.resultJson)]"
+
+  - stage: ProcessItems
+    dependsOn: ProcessChanges
+    variables:
+      resultJsonArrayPython: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['ProcessString.resultJson'] ]
+      resultJsonArrayBash: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['EchoResultJson.savedResultJsonArray'] ]
+    jobs:
+    - deployment: update_root_app
+      pool: 
+        name: $(DEV_AGENT_POOL)
+      environment: ${{ parameters.ENV }}
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            - bash: |
+                echo "Changed applications:"
+                echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
+                echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
+
+                # Login to ArgoCD
+                curl -sSL -o /tmp/argocd-v2.12.4 https://github.com/argoproj/argo-cd/releases/download/v2.12.4/argocd-linux-amd64
+                chmod +x /tmp/argocd-v2.12.4
+                sudo mv /tmp/argocd-v2.12.4 /usr/local/bin/argocd 
+
+                argocd login $ARGOCD_SERVER --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure --grpc-web
+
+                # Sync the app
+                argocd app sync root-diego-app --prune
+                echo "✅ root-app synched"
+              displayName: 'Display Changed Apps'
+
+    - ${{ each item in parameters.APPS }}:
+      - deployment: deploy_${{ replace(item, '-', '_') }}
+        displayName: 'Deploy ${{ item }}'
+        pool: 
+          name: $(DEV_AGENT_POOL)
+        environment: ${{ parameters.ENV }}
+        dependsOn: update_root_app
+        condition: and(succeeded(), contains(variables['resultJsonArrayPython'], '${{ item }}'))
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+              - bash: |
+                  echo "Deploying item: ${{ item }}"
+                  echo "This item was found in the changed applications list."
+                displayName: 'Process ${{ item }}'
+              - bash: |
+                  # Login to ArgoCD
+                  curl -sSL -o /tmp/argocd-v2.12.4 https://github.com/argoproj/argo-cd/releases/download/v2.12.4/argocd-linux-amd64
+                  chmod +x /tmp/argocd-v2.12.4
+                  sudo mv /tmp/argocd-v2.12.4 /usr/local/bin/argocd 
+
+                  argocd login $ARGOCD_SERVER --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure --grpc-web
+
+                  # Sync the app
+                  app_name=${{ item }}
+                  argocd app sync "$app_name" --prune
+                  echo "✅ Syncing app: $app_name"
+
+                displayName: 'Sync ArgoCD App: ${{ item }}'
+                env:
+                  ARGOCD_SERVER: $(argocdServer)
+                  ARGOCD_USERNAME: $(argocdUsername)
+                  ARGOCD_PASSWORD: $(argocdPassword)
