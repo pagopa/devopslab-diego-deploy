@@ -1,3 +1,6 @@
+trigger:
+  - main
+
 parameters:
 - name: ENV 
   displayName: Environment 
@@ -18,7 +21,9 @@ parameters:
 
 variables:
   - name: directoryPattern
-    value: 'helm/${{ parameters.ENV }}'  # Modify this pattern according to your needs
+    value: 'helm/${{ parameters.ENV }}'
+  - name: isTriggerBuild
+    value: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
 
 resources:
   repositories:
@@ -33,13 +38,14 @@ pool:
 
 stages:
   - stage: ProcessChanges
+    condition: and(succeeded(), eq(variables.isTriggerBuild, true))
     jobs:
     - job: ProcessAndConvert
       pool:
         vmImage: 'ubuntu-latest'
       steps:
       - checkout: self
-        fetchDepth: 0  # Necessary to get the full history for comparison
+        fetchDepth: 0
   
       - task: UsePythonVersion@0
         inputs:
@@ -47,31 +53,22 @@ stages:
           addToPath: true
   
       - task: PythonScript@0
-        name: ProcessString  # Aggiungiamo un nome a questo task per riferirci ad esso più tardi
+        name: ProcessString
         displayName: 'Process String and Convert to JSON'
         inputs:
           scriptSource: 'inline'
           script: |
             import json
             import subprocess
-            # Esegui il comando bash e ottieni l'output
+            
             command = "git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u"
             str = subprocess.check_output(command, shell=True).decode('utf-8').strip()
-            print("Input string:", str)
-            
-            # Passo 1: Rimuovere tutte le voci che non hanno "helm/dev"
             filtered_list = [item for item in str.split('\n') if "helm/dev" in item]
-            print("Filtered list:", filtered_list)
-            
-            # Passo 2: Rimuovere "helm/dev" dalle voci rimanenti
             cleaned_list = [item.replace("helm/dev/", "") for item in filtered_list]
-            print("Cleaned list:", cleaned_list)
-            
-            # Passo 3: Convertire il risultato in una stringa JSON
             result_json = json.dumps(cleaned_list)
-            
             print(f'##vso[task.setvariable variable=resultJson;isOutput=true]{result_json}')
             print(f'Risultato JSON: {result_json}')
+
       - task: Bash@3
         name: EchoResultJson
         displayName: 'Echo Result JSON Array'
@@ -84,9 +81,14 @@ stages:
 
   - stage: ProcessItems
     dependsOn: ProcessChanges
+    condition: or(succeeded(), eq(variables.isTriggerBuild, false))
     variables:
-      resultJsonArrayPython: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['ProcessString.resultJson'] ]
-      resultJsonArrayBash: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['EchoResultJson.savedResultJsonArray'] ]
+      ${{ if eq(variables.isTriggerBuild, true) }}:
+        resultJsonArrayPython: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['ProcessString.resultJson'] ]
+        resultJsonArrayBash: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['EchoResultJson.savedResultJsonArray'] ]
+      ${{ if eq(variables.isTriggerBuild, false) }}:
+        resultJsonArrayPython: '${{ convertToJson(parameters.APPS) }}'
+        resultJsonArrayBash: '${{ convertToJson(parameters.APPS) }}'
     jobs:
     - deployment: update_root_app
       pool: 
@@ -120,14 +122,24 @@ stages:
           name: $(DEV_AGENT_POOL)
         environment: ${{ parameters.ENV }}
         dependsOn: update_root_app
-        condition: and(succeeded(), contains(variables['resultJsonArrayPython'], '${{ item }}'))
+        condition: >
+          and(
+            succeeded(),
+            or(
+              and(
+                eq(variables.isTriggerBuild, true),
+                contains(variables['resultJsonArrayPython'], '${{ item }}')
+              ),
+              eq(variables.isTriggerBuild, false)
+            )
+          )
         strategy:
           runOnce:
             deploy:
               steps:
               - bash: |
                   echo "Deploying item: ${{ item }}"
-                  echo "This item was found in the changed applications list."
+                  echo "This item was found in the changed applications list or the pipeline was manually triggered."
                 displayName: 'Process ${{ item }}'
               - bash: |
                   # Login to ArgoCD
