@@ -38,7 +38,7 @@ variables:
   - name: directoryPattern
     value: 'helm/${{ parameters.ENV }}'
   - name: isCompleteRun
-    value: $(ne(variables['Build.Reason'], 'PullRequest'))
+    value: $[ne(variables['Build.Reason'], 'PullRequest')]
 
 resources:
   repositories:
@@ -129,6 +129,8 @@ stages:
             - bash: |
                 echo "Is this a complete run? $(isCompleteRun)"
                 echo "Is this a complete run? ${{variables.isCompleteRun}}"
+                echo "---"
+                echo "BuildReason: ${{variables['Build.Reason']}} "
                 echo "Changed applications:"
                 echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
                 echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
