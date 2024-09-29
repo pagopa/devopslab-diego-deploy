@@ -16,7 +16,7 @@ metadata:
 spec:
   project: '{{.Values._argocdProjectName}}'
   source:
-    repoURL: 'https://github.com/diegolagospagopa/devopslab-diego-deploy'
+    repoURL: 'https://github.com/pagopa/devopslab-diego-deploy'
     path: helm/dev/one-color
     targetRevision: '{{.Values._gitTargetRevision}}' 
     helm:
