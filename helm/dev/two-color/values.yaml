@@ -54,7 +54,7 @@ microservice-chart:
   ingress:
     create: true
     host: diego.itn.internal.devopslab.pagopa.it
-    path: /diego/one-color(/|$)(.*)
+    path: /diego/two-color(/|$)(.*)
     rewriteTarget: /$2
     servicePort: 8080
 
@@ -91,4 +91,4 @@ microservice-chart:
             matchLabels:
               aadpodidbinding: diego-pod-identity
           namespaces: ["diego"]
-          topologyKey: topology.kubernetes.io/zone
+          topologyKey: topology.kubernetes.io/ztwo

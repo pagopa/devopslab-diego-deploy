@@ -3,7 +3,7 @@ microservice-chart:
 
   deployment:
     create: true
-    replicas: 3
+    replicas: 1
 
   serviceAccount:
     name: diego-workload-identity
