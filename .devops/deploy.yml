@@ -1,5 +1,15 @@
-trigger:
-  - main
+trigger: none  # Disabilita i trigger automatici su push
+
+pr:
+  - main  # Abilita il trigger solo per le PR verso main
+
+schedules:
+- cron: "0 0 * * *"
+  displayName: Nightly batch run
+  branches:
+    include:
+    - main
+  always: true
 
 parameters:
 - name: ENV 
@@ -22,8 +32,8 @@ parameters:
 variables:
   - name: directoryPattern
     value: 'helm/${{ parameters.ENV }}'
-  - name: isTriggerBuild
-    value: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
+  - name: isCompleteRun
+    value: $[eq(variables['Build.Reason'], 'PullRequest')]
 
 resources:
   repositories:
@@ -38,7 +48,7 @@ pool:
 
 stages:
   - stage: ProcessChanges
-    condition: and(succeeded(), eq(variables.isTriggerBuild, true))
+    condition: and(succeeded(), eq(variables.isCompleteRun, false))
     jobs:
     - job: ProcessAndConvert
       pool:
@@ -60,14 +70,26 @@ stages:
           script: |
             import json
             import subprocess
-
+            
+            print("Starting the process...")
+            
             command = "git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u"
+            print(f"Executing command: {command}")
+            
             str = subprocess.check_output(command, shell=True).decode('utf-8').strip()
+            print(f"Command output: {str}")
+            
             filtered_list = [item for item in str.split('\n') if "helm/dev" in item]
+            print(f"Filtered list: {filtered_list}")
+            
             cleaned_list = [item.replace("helm/dev/", "") for item in filtered_list]
+            print(f"Cleaned list: {cleaned_list}")
+            
             result_json = json.dumps(cleaned_list)
+            print(f"Final JSON result: {result_json}")
+            
             print(f'##vso[task.setvariable variable=resultJson;isOutput=true]{result_json}')
-            print(f'Risultato JSON: {result_json}')
+            print("Process completed.")
 
       - task: Bash@3
         name: EchoResultJson
@@ -80,13 +102,14 @@ stages:
             echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(ProcessString.resultJson)]"
 
   - stage: ProcessItems
-    dependsOn: ProcessChanges
-    condition: or(succeeded(), eq(variables.isTriggerBuild, false))
+    dependsOn: 
+      - ProcessChanges
+    condition: always()  # Esegui sempre questo stage
     variables:
-      ${{ if eq(variables.isTriggerBuild, true) }}:
-        resultJsonArrayPython: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['ProcessString.resultJson'] ]
-        resultJsonArrayBash: $[ stageDependencies.ProcessChanges.ProcessAndConvert.outputs['EchoResultJson.savedResultJsonArray'] ]
-      ${{ if eq(variables.isTriggerBuild, false) }}:
+      ${{ if eq(variables.isCompleteRun, false) }}:
+        resultJsonArrayPython: $[ dependencies.ProcessChanges.outputs['ProcessAndConvert.ProcessString.resultJson'] ]
+        resultJsonArrayBash: $[ dependencies.ProcessChanges.outputs['ProcessAndConvert.EchoResultJson.savedResultJsonArray'] ]
+      ${{ if eq(variables.isCompleteRun, true) }}:
         resultJsonArrayPython: '${{ convertToJson(parameters.APPS) }}'
         resultJsonArrayBash: '${{ convertToJson(parameters.APPS) }}'
     jobs:
@@ -99,6 +122,7 @@ stages:
           deploy:
             steps:
             - bash: |
+                echo "Is this a complete run? $(isCompleteRun)"
                 echo "Changed applications:"
                 echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
                 echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
@@ -127,10 +151,10 @@ stages:
             succeeded(),
             or(
               and(
-                eq(variables.isTriggerBuild, true),
+                eq(variables.isCompleteRun, false),
                 contains(variables['resultJsonArrayPython'], '${{ item }}')
               ),
-              eq(variables.isTriggerBuild, false)
+              eq(variables.isCompleteRun, true)
             )
           )
         strategy:
@@ -139,7 +163,7 @@ stages:
               steps:
               - bash: |
                   echo "Deploying item: ${{ item }}"
-                  echo "This item was found in the changed applications list or the pipeline was manually triggered."
+                  echo "This item was found in the changed applications list, or it's a complete run (PR or main branch)."
                 displayName: 'Process ${{ item }}'
               - bash: |
                   # Login to ArgoCD
