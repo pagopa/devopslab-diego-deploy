@@ -158,7 +158,7 @@ stages:
     - job: CheckRepositoryTrigger
       displayName: 'Check Repository Trigger'
       dependsOn: update_root_app
-      condition: and(success(), eq(variables['Build.Repository.Name'], 'ResourceTrigger'))
+      condition: success()
       # variables:
         # triggerRepo: $[ coalesce(variables['Build.SourceRepositoryName'], 'unknown') ]
       steps:
