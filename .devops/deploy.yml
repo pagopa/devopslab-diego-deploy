@@ -52,6 +52,8 @@ resources:
       name: pagopa/devops-java-springboot-color
       ref: main
       endpoint: 'azure-devops-github-ro'
+      trigger: 
+        - main
 
 pool:
   vmImage: ubuntu-latest
