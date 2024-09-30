@@ -47,6 +47,11 @@ resources:
       name: pagopa/azure-pipeline-templates
       ref: refs/tags/v6.8.0
       endpoint: 'azure-devops-github-ro'
+    - repository: one-color
+      type: github
+      name: pagopa/devops-java-springboot-color
+      ref: main
+      endpoint: 'azure-devops-github-ro'
 
 pool:
   vmImage: ubuntu-latest
@@ -148,13 +153,24 @@ stages:
                 echo "✅ root-app synched"
               displayName: 'Display Changed Apps'
 
+    - job: CheckRepositoryTrigger
+      displayName: 'Check Repository Trigger'
+      dependsOn: update_root_app
+      condition: and(success(), eq(variables['Build.Reason'], 'ResourceTrigger'))
+      # variables:
+        # triggerRepo: $[ coalesce(variables['Build.SourceRepositoryName'], 'unknown') ]
+      steps:
+      - bash: |
+          echo "Triggered by repository: $(Build.Repository.Name)"
+        displayName: 'Display Trigger Repository Info'
+          
     - ${{ each item in parameters.APPS }}:
       - deployment: deploy_${{ replace(item, '-', '_') }}
         displayName: 'Deploy ${{ item }}'
         pool: 
           name: $(DEV_AGENT_POOL)
         environment: ${{ parameters.ENV }}
-        dependsOn: update_root_app
+        dependsOn: [update_root_app, CheckRepositoryTrigger]
         condition: >
           and(
             succeeded(),
