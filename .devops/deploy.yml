@@ -162,8 +162,8 @@ stages:
       steps:
       - bash: |
           echo "Triggered by repository: $(Build.Repository.Name)"
-          
         displayName: 'Display Trigger Repository Info'
+          
     - ${{ each item in parameters.APPS }}:
       - deployment: deploy_${{ replace(item, '-', '_') }}
         displayName: 'Deploy ${{ item }}'
