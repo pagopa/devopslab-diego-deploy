@@ -142,8 +142,6 @@ stages:
                 echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
                 echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
                 echo 'resultJsonArrayPython: ${{ variables.resultJsonArrayPython }}'
-                echo ''
-                echo 'params.apps: ${{ parameters.APPS }}'
 
 
                 # Login to ArgoCD
