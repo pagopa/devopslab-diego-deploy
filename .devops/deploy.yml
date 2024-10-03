@@ -143,6 +143,7 @@ stages:
                 echo 'resultJsonArrayPython: ${{ variables.resultJsonArrayPython }}'
                 echo "---"
                 echo "APPS_ARGOCD: ${{ convertToJson(parameters.APPS_ARGOCD) }}"
+                echo "MY_APPS: ${{ variables.my_apps }}"
 
 
                 # Login to ArgoCD
