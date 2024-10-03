@@ -34,6 +34,11 @@ parameters:
     - two-color
     - three-color
 
+- name: APPS_ARGOCD
+  displayName: ArgoCD Apps 
+  type: object
+
+
 variables:
   - name: directoryPattern
     value: 'helm/${{ parameters.ENV }}'
@@ -47,13 +52,6 @@ resources:
       name: pagopa/azure-pipeline-templates
       ref: refs/tags/v6.8.0
       endpoint: 'azure-devops-github-ro'
-    - repository: one-color
-      type: github
-      name: pagopa/devops-java-springboot-color
-      ref: main
-      endpoint: 'azure-devops-github-ro'
-      trigger: 
-        - main
 
 pool:
   vmImage: ubuntu-latest
@@ -142,6 +140,8 @@ stages:
                 echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
                 echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
                 echo 'resultJsonArrayPython: ${{ variables.resultJsonArrayPython }}'
+                echo "---"
+                echo "APPS_ARGOCD: ${{ convertToJson(parameters.APPS_ARGOCD) }}"
 
 
                 # Login to ArgoCD
