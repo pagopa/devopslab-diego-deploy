@@ -27,7 +27,7 @@ parameters:
     - prod
 
 - name: APPS 
-  displayName: Environment 
+  displayName: ArgoCD Apps 
   type: object
   default:
     - one-color
@@ -142,6 +142,9 @@ stages:
                 echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
                 echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
                 echo 'resultJsonArrayPython: ${{ variables.resultJsonArrayPython }}'
+                echo ''
+                echo 'params.apps: ${{ parameters.APPS }}'
+
 
                 # Login to ArgoCD
                 curl -sSL -o /tmp/argocd-v2.12.4 https://github.com/argoproj/argo-cd/releases/download/v2.12.4/argocd-linux-amd64
