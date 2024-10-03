@@ -36,8 +36,8 @@ parameters:
 
 - name: APPS_ARGOCD
   displayName: ArgoCD Apps 
-  type: object
-  default: []
+  type: string
+  default: ""
 
 
 variables:
