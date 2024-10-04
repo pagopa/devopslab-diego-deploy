@@ -32,7 +32,6 @@ parameters:
   default:
     - one-color
     - two-color
-    - three-color
 
 - name: APPS_ARGOCD
   displayName: ArgoCD Apps 
