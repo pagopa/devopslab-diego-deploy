@@ -38,7 +38,7 @@ parameters:
   displayName: ArgoCD Apps 
   type: string
   default: "-"
-  
+
 
 
 variables:
@@ -207,6 +207,9 @@ stages:
                   # Sync the app
                   app_name=${{ item }}
                   argocd app sync "$app_name" --prune
+                  
+                  argocd app actions run "$app_name" restart --kind Deployment --all --grpc-web
+
                   echo "✅ Syncing app: $app_name"
 
                 displayName: 'Sync ArgoCD App: ${{ item }}'
