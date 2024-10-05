@@ -135,7 +135,6 @@ stages:
                 echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
                 echo 'resultJsonArrayPython: ${{ variables.resultJsonArrayPython }}'
                 echo "---"
-                echo "APPS_ARGOCD: ${{ convertToJson(parameters.APPS_ARGOCD) }}"
                 echo "MY_APPS: $(my_apps)"
 
 
