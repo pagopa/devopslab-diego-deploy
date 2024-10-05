@@ -1,10 +1,15 @@
 trigger: none  # Disabilita i trigger automatici su push
 
 pr:
-  - main  # Abilita il trigger solo per le PR verso main
+  branches:
+    include:
+      - main
+  paths:  
+    include:
+    - 'helm/dev/**'
 
 schedules:
-- cron: "0 0 * * *"
+- cron: "12 23 * * *"
   displayName: Nightly batch run
   branches:
     include:
@@ -22,12 +27,18 @@ parameters:
     - prod
 
 - name: APPS 
-  displayName: Environment 
+  displayName: ArgoCD Apps 
   type: object
   default:
     - one-color
     - two-color
-    - three-color
+
+- name: APPS_ARGOCD
+  displayName: ArgoCD Apps 
+  type: string
+  default: "-"
+
+
 
 variables:
   - name: directoryPattern
@@ -47,10 +58,10 @@ pool:
   vmImage: ubuntu-latest
 
 stages:
-  - stage: ProcessChanges
+  - stage: PrGitChangedFolders
     condition: and(succeeded(), eq(variables.isCompleteRun, false))
     jobs:
-    - job: ProcessAndConvert
+    - job: FindGitChangedFolder
       pool:
         vmImage: 'ubuntu-latest'
       steps:
@@ -63,7 +74,7 @@ stages:
           addToPath: true
   
       - task: PythonScript@0
-        name: ProcessString
+        name: GrepGitFolders
         displayName: 'Process String and Convert to JSON'
         inputs:
           scriptSource: 'inline'
@@ -98,18 +109,18 @@ stages:
           targetType: 'inline'
           script: |
             echo "Risultato JSON Array:"
-            echo '$(ProcessString.resultJson)'
-            echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(ProcessString.resultJson)]"
+            echo '$(GrepGitFolders.resultJson)'
+            echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(GrepGitFolders.resultJson)"
 
   - stage: ProcessItems
     dependsOn: 
-      - ProcessChanges
-    condition: always()  # Esegui sempre questo stage
+      - PrGitChangedFolders
+    condition: always()
     variables:
       ${{ if eq(variables.isCompleteRun, false) }}:
-        resultJsonArrayPython: $[ dependencies.ProcessChanges.outputs['ProcessAndConvert.ProcessString.resultJson'] ]
-        resultJsonArrayBash: $[ dependencies.ProcessChanges.outputs['ProcessAndConvert.EchoResultJson.savedResultJsonArray'] ]
-      ${{ if eq(variables.isCompleteRun, true) }}:
+        resultJsonArrayPython: $[ stageDependencies.PrGitChangedFolders.FindGitChangedFolder.outputs['GrepGitFolders.resultJson'] ]
+        resultJsonArrayBash: $[ stageDependencies.PrGitChangedFolders.FindGitChangedFolder.outputs['EchoResultJson.savedResultJsonArray'] ]
+      ${{ else }}:
         resultJsonArrayPython: '${{ convertToJson(parameters.APPS) }}'
         resultJsonArrayBash: '${{ convertToJson(parameters.APPS) }}'
     jobs:
@@ -123,9 +134,17 @@ stages:
             steps:
             - bash: |
                 echo "Is this a complete run? $(isCompleteRun)"
+                echo "Is this a complete run? ${{variables.isCompleteRun}}"
+                echo "---"
+                echo "BuildReason: ${{variables['Build.Reason']}} "
                 echo "Changed applications:"
                 echo 'resultJsonArrayBash: $(resultJsonArrayBash)'
                 echo 'resultJsonArrayPython: $(resultJsonArrayPython)'
+                echo 'resultJsonArrayPython: ${{ variables.resultJsonArrayPython }}'
+                echo "---"
+                echo "APPS_ARGOCD: ${{ convertToJson(parameters.APPS_ARGOCD) }}"
+                echo "MY_APPS: $(my_apps)"
+
 
                 # Login to ArgoCD
                 curl -sSL -o /tmp/argocd-v2.12.4 https://github.com/argoproj/argo-cd/releases/download/v2.12.4/argocd-linux-amd64
@@ -139,20 +158,31 @@ stages:
                 echo "✅ root-app synched"
               displayName: 'Display Changed Apps'
 
+    - job: CheckRepositoryTrigger
+      displayName: 'Check Repository Trigger'
+      dependsOn: update_root_app
+      condition: succeeded()
+      # variables:
+        # triggerRepo: $[ coalesce(variables['Build.SourceRepositoryName'], 'unknown') ]
+      steps:
+      - bash: |
+          echo "Triggered by repository: $(Build.Repository.Name)"
+        displayName: 'Display Trigger Repository Info'
+          
     - ${{ each item in parameters.APPS }}:
       - deployment: deploy_${{ replace(item, '-', '_') }}
         displayName: 'Deploy ${{ item }}'
         pool: 
           name: $(DEV_AGENT_POOL)
         environment: ${{ parameters.ENV }}
-        dependsOn: update_root_app
+        dependsOn: [update_root_app, CheckRepositoryTrigger]
         condition: >
           and(
             succeeded(),
             or(
               and(
                 eq(variables.isCompleteRun, false),
-                contains(variables['resultJsonArrayPython'], '${{ item }}')
+                contains(variables.resultJsonArrayPython, '${{ item }}')
               ),
               eq(variables.isCompleteRun, true)
             )
@@ -176,6 +206,9 @@ stages:
                   # Sync the app
                   app_name=${{ item }}
                   argocd app sync "$app_name" --prune
+                  
+                  argocd app actions run "$app_name" restart --kind Deployment --all --grpc-web
+
                   echo "✅ Syncing app: $app_name"
 
                 displayName: 'Sync ArgoCD App: ${{ item }}'
