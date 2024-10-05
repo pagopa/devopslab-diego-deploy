@@ -223,8 +223,8 @@ stages:
     condition: succeeded()
     jobs:
       - ${{ each item in parameters.APPS }}:
-        - deployment: get_postman_vars_${{ replace(item, '-', '_') }}
-          displayName: Get and Set Postman variables
+        - deployment: postman_tests_${{ replace(item, '-', '_') }}
+          displayName: 'Postman Tests for ${{ item }}'
           environment: ${{ parameters.ENV }}
           pool: 
             name: $(DEV_AGENT_POOL)
@@ -234,50 +234,43 @@ stages:
                 steps:
                 - checkout: self
                 - task: Bash@3
-                  displayName: 'Set variables'
+                  displayName: 'Set and Print Postman Variables'
                   name: varsPostman
                   inputs:
                     targetType: 'inline'
                     script: |
-                      echo "##vso[task.setvariable variable=nameRepo;isOutput=true]$(yq '.postman-test.nameRepo' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml )"
-                      echo "##vso[task.setvariable variable=dir;isOutput=true]$(yq '.postman-test.dir' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml )"
-                      echo "##vso[task.setvariable variable=collectionName;isOutput=true]$(yq '.postman-test.collectionName' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml )"
-                      echo "##vso[task.setvariable variable=envVariables;isOutput=true]$(yq '.postman-test.envVariables' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml )"
-                - task: Bash@3
-                  displayName: 'Print namespace variables'
-                  inputs:
-                    targetType: 'inline'
-                    script: |
-                      echo "nameRepo: $(varsPostman.nameRepo)"
-                      echo "dir: $(varsPostman.dir)"
-                      echo "collectionName: $(varsPostman.collectionName)"
-                      echo "envVariables: $(varsPostman.envVariables)"
+                      echo "Setting variables..."
+                      nameRepo=$(yq '.postman-test.nameRepo' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
+                      dir=$(yq '.postman-test.dir' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
+                      collectionName=$(yq '.postman-test.collectionName' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
+                      envVariables=$(yq '.postman-test.envVariables' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
+                      
+                      echo "Printing variables..."
+                      echo "nameRepo: $nameRepo"
+                      echo "dir: $dir"
+                      echo "collectionName: $collectionName"
+                      echo "envVariables: $envVariables"
+                      
+                      echo "##vso[task.setvariable variable=nameRepo]$nameRepo"
+                      echo "##vso[task.setvariable variable=dir]$dir"
+                      echo "##vso[task.setvariable variable=collectionName]$collectionName"
+                      echo "##vso[task.setvariable variable=envVariables]$envVariables"
 
-        - deployment: postman_tests_${{ replace(item, '-', '_') }}
-          displayName: Postman Tests
-          environment: ${{ parameters.ENV }}
-          dependsOn: get_postman_vars_${{ replace(item, '-', '_') }}
-          pool: 
-            name: $(DEV_AGENT_POOL)
-          strategy:
-            runOnce:
-              deploy:
-                steps:
-                - checkout: self
                 - bash: |
-                    nameRepo=$(varsPostman.nameRepo)
-                    dir=$(varsPostman.dir)
-                    collectionName=$(varsPostman.collectionName)
-                    envVariable=$(varsPostman.envVariables)
-                    
-                    if [[ -n "$nameRepo" && -n "$dir" && -n "$collectionName" && -n "$envVariable" ]]; then
-                      echo "ok params"
+                    ls -la 
+                    if [[ -n "$(nameRepo)" && -n "$(dir)" && -n "$(collectionName)" && -n "$(envVariables)" ]]; then
+                      echo "All required variables are set. Proceeding with Postman tests."
+                      
+                      git clone https://github.com/pagopa/$(nameRepo).git
+                      cd $(dir)
+                      cat postman.txt
+                      
+                      # Here you would typically run your Postman tests
+                      # For example:
+                      # npm install -g newman
+                      # newman run $(collectionName) -e $(envVariables)
                     else
                       echo "One or more required variables are null or empty. Skipping Postman tests."
                       exit 0
                     fi
-                    ls -la
-
-                    git clone https://github.com/pagopa/$nameRepo.git
-                    cd $dir
-                    cat postman.txt
+                  displayName: 'Run Postman Tests'
