@@ -44,7 +44,7 @@ variables:
   - name: directoryPattern
     value: 'helm/${{ parameters.ENV }}'
   - name: isCompleteRun
-    value: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
+    value: $[eq(variables['Build.Reason'], 'PullRequest')]
 
 resources:
   repositories:
