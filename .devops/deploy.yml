@@ -249,21 +249,21 @@ stages:
                       echo "##vso[task.setvariable variable=envVariables]$envVariables"
 
                 - bash: |
-                    if [[ -n "$(nameRepo)" && -n "$(dir)" && -n "$(collectionName)" && -n "$(envVariables)" ]]; then
-                      echo "All required variables are set. Proceeding with Postman tests."
-                      
-                      git clone https://github.com/pagopa/$(nameRepo).git
-                      ls -la
-                      cd $(nameRepo)/$(dir)
-                      ls -la
-                      cat postman.txt
-                      
-                      # Here you would typically run your Postman tests
-                      # For example:
-                      # npm install -g newman
-                      # newman run $(collectionName) -e $(envVariables)
-                    else
-                      echo "One or more required variables are null or empty. Skipping Postman tests."
-                      exit 0
+                    if [[ -z "$(nameRepo)" || -z "$(dir)" || -z "$(collectionName)" || -z "$(envVariables)" ]]; then
+                        echo "One or more required variables are null or empty. Skipping Postman tests."
+                        exit 0
                     fi
+
+                    echo "All required variables are set. Proceeding with Postman tests."
+
+                    git clone https://github.com/pagopa/$(nameRepo).git
+                    ls -la
+                    cd $(nameRepo)/$(dir)
+                    ls -la
+                    cat postman.txt
+
+                    # Here you would typically run your Postman tests
+                    # For example:
+                    # npm install -g newman
+                    # newman run $(collectionName) -e $(envVariables)
                   displayName: 'Run Postman Tests'
