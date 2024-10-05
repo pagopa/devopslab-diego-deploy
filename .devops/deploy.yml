@@ -38,6 +38,8 @@ variables:
     value: 'helm/${{ parameters.ENV }}'
   - name: isCompleteRun
     value: $[eq(variables['Build.Reason'], 'PullRequest')]
+  - name: System.Debug
+    value: true
 
 resources:
   repositories:
@@ -253,6 +255,12 @@ stages:
                         echo "One or more required variables are null or empty. Skipping Postman tests."
                         exit 0
                     fi
+
+                    echo "Printing variables..."
+                    echo "nameRepo: $nameRepo"
+                    echo "dir: $dir"
+                    echo "collectionName: $collectionName"
+                    echo "envVariables: $envVariables"
 
                     echo "All required variables are set. Proceeding with Postman tests."
 
