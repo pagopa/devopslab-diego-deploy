@@ -255,9 +255,8 @@ stages:
 
         - deployment: postman_tests_${{ replace(item, '-', '_') }}
           displayName: Postman Tests
-          condition: and(succeeded(), ne(dependencies.get_postman_vars.outputs['varsPostman.nameRepo'], 'null'),ne(dependencies.get_postman_vars.outputs['varsPostman.dir'], 'null'),ne(dependencies.get_postman_vars.outputs['varsPostman.collectionName'], 'null'),ne(dependencies.get_postman_vars.outputs['varsPostman.envVariables'], 'null'))
           environment: ${{ parameters.ENV }}
-          dependsOn: get_postman_vars
+          dependsOn: get_postman_vars_${{ replace(item, '-', '_') }}
           pool: 
             name: $(DEV_AGENT_POOL)
           strategy:
