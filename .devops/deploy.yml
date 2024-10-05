@@ -33,13 +33,6 @@ parameters:
     - one-color
     - two-color
 
-- name: APPS_ARGOCD
-  displayName: ArgoCD Apps 
-  type: string
-  default: "-"
-
-
-
 variables:
   - name: directoryPattern
     value: 'helm/${{ parameters.ENV }}'
