@@ -308,7 +308,7 @@ stages:
 
                 - bash: |
                     if [ "$(Agent.JobStatus)" == "SucceededWithIssues" ]; then
-                      echo "##vso[task.complete result=SucceededWithIssues;]"
+                      echo "##vso[task.complete result=Succeeded;]"
                     fi
                   displayName: 'Set Job Status'
                   condition: always()
