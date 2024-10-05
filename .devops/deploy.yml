@@ -257,12 +257,13 @@ stages:
                       echo "##vso[task.setvariable variable=envVariables]$envVariables"
 
                 - bash: |
-                    ls -la 
                     if [[ -n "$(nameRepo)" && -n "$(dir)" && -n "$(collectionName)" && -n "$(envVariables)" ]]; then
                       echo "All required variables are set. Proceeding with Postman tests."
                       
                       git clone https://github.com/pagopa/$(nameRepo).git
-                      cd $(dir)
+                      ls -la
+                      cd $(nameRepo)/$(dir)
+                      ls -la
                       cat postman.txt
                       
                       # Here you would typically run your Postman tests
