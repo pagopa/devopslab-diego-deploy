@@ -1,3 +1,9 @@
+postman-test:
+  nameRepo: devops-java-springboot-color
+  dir: src/test/postman
+  collectionName: mil-papos.postman_collection.json
+  envVariables: dev.postman_environment.json
+
 microservice-chart:
   namespace: "diego"
 
