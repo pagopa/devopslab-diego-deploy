@@ -238,17 +238,46 @@ stages:
                       dir=$(yq '.postman-test.dir' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
                       collectionName=$(yq '.postman-test.collectionName' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
                       envVariables=$(yq '.postman-test.envVariables' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
-                      
+
                       echo "Printing variables..."
                       echo "nameRepo: $nameRepo"
                       echo "dir: $dir"
                       echo "collectionName: $collectionName"
                       echo "envVariables: $envVariables"
-                      
-                      echo "##vso[task.setvariable variable=nameRepo]$nameRepo"
-                      echo "##vso[task.setvariable variable=dir]$dir"
-                      echo "##vso[task.setvariable variable=collectionName]$collectionName"
-                      echo "##vso[task.setvariable variable=envVariables]$envVariables"
+
+                      # Set Azure DevOps variables with checks
+                      if [ ! -z "$nameRepo" ]; then
+                          echo "##vso[task.setvariable variable=nameRepo]$nameRepo"
+                      else
+                          echo "Warning: nameRepo is empty"
+                      fi
+
+                      if [ ! -z "$dir" ]; then
+                          echo "##vso[task.setvariable variable=dir]$dir"
+                      else
+                          echo "Warning: dir is empty"
+                      fi
+
+                      if [ ! -z "$collectionName" ]; then
+                          echo "##vso[task.setvariable variable=collectionName]$collectionName"
+                      else
+                          echo "Warning: collectionName is empty"
+                      fi
+
+                      if [ ! -z "$envVariables" ]; then
+                          echo "##vso[task.setvariable variable=envVariables]$envVariables"
+                      else
+                          echo "Warning: envVariables is empty"
+                      fi
+
+                      # Final check to ensure all variables are set
+                      if [ -z "$nameRepo" ] || [ -z "$dir" ] || [ -z "$collectionName" ] || [ -z "$envVariables" ]; then
+                          echo "##vso[task.logissue type=error]One or more required variables are not set. Pipeline will be terminated."
+                          echo "##vso[task.complete result=Failed;]"
+                          exit 1
+                      else
+                          echo "All required variables are set. Proceeding with the pipeline."
+                      fi
 
                 - bash: |
                     if [[ -z "$(nameRepo)" || -z "$(dir)" || -z "$(collectionName)" || -z "$(envVariables)" ]]; then
