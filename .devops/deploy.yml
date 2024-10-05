@@ -275,13 +275,12 @@ stages:
                           echo "Warning: envVariables is empty or null"
                       fi
 
-                      # Final check to ensure all variables are set and not "null"
                       if ! is_valid "$nameRepo" || ! is_valid "$dir" || ! is_valid "$collectionName" || ! is_valid "$envVariables"; then
-                          echo "##vso[task.logissue type=error]One or more required variables are not set or are set to 'null'. Pipeline will be terminated."
-                          echo "##vso[task.complete result=Failed;]"
-                          exit 1
+                          echo "##vso[task.logissue type=warning]One or more required variables are not set or are set to 'null'. Deployment will be stopped."
+                          echo "##vso[task.complete result=SucceededWithIssues;]"
+                          exit 0
                       else
-                          echo "All required variables are set and not null. Proceeding with the pipeline."
+                          echo "All required variables are set and not null. Proceeding with the deployment."
                       fi
 
                 - bash: |
