@@ -223,7 +223,7 @@ stages:
     condition: succeeded()
     jobs:
       - ${{ each item in parameters.APPS }}:
-        - deployment: get_postman_vars
+        - deployment: get_postman_vars_${{ replace(item, '-', '_') }}
           displayName: Get and Set Postman variables
           environment: ${{ parameters.ENV }}
           pool: 
@@ -253,7 +253,7 @@ stages:
                       echo "collectionName: $(varsPostman.collectionName)"
                       echo "envVariables: $(varsPostman.envVariables)"
 
-        - deployment: postman_tests
+        - deployment: postman_tests_${{ replace(item, '-', '_') }}
           displayName: Postman Tests
           condition: and(succeeded(), ne(dependencies.get_postman_vars.outputs['varsPostman.nameRepo'], 'null'),ne(dependencies.get_postman_vars.outputs['varsPostman.dir'], 'null'),ne(dependencies.get_postman_vars.outputs['varsPostman.collectionName'], 'null'),ne(dependencies.get_postman_vars.outputs['varsPostman.envVariables'], 'null'))
           environment: ${{ parameters.ENV }}
