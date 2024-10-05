@@ -245,38 +245,43 @@ stages:
                       echo "collectionName: $collectionName"
                       echo "envVariables: $envVariables"
 
+                      # Function to check if a value is empty or "null"
+                      is_valid() {
+                          [ ! -z "$1" ] && [ "$1" != "null" ]
+                      }
+
                       # Set Azure DevOps variables with checks
-                      if [ ! -z "$nameRepo" ]; then
+                      if is_valid "$nameRepo"; then
                           echo "##vso[task.setvariable variable=nameRepo]$nameRepo"
                       else
-                          echo "Warning: nameRepo is empty"
+                          echo "Warning: nameRepo is empty or null"
                       fi
 
-                      if [ ! -z "$dir" ]; then
+                      if is_valid "$dir"; then
                           echo "##vso[task.setvariable variable=dir]$dir"
                       else
-                          echo "Warning: dir is empty"
+                          echo "Warning: dir is empty or null"
                       fi
 
-                      if [ ! -z "$collectionName" ]; then
+                      if is_valid "$collectionName"; then
                           echo "##vso[task.setvariable variable=collectionName]$collectionName"
                       else
-                          echo "Warning: collectionName is empty"
+                          echo "Warning: collectionName is empty or null"
                       fi
 
-                      if [ ! -z "$envVariables" ]; then
+                      if is_valid "$envVariables"; then
                           echo "##vso[task.setvariable variable=envVariables]$envVariables"
                       else
-                          echo "Warning: envVariables is empty"
+                          echo "Warning: envVariables is empty or null"
                       fi
 
-                      # Final check to ensure all variables are set
-                      if [ -z "$nameRepo" ] || [ -z "$dir" ] || [ -z "$collectionName" ] || [ -z "$envVariables" ]; then
-                          echo "##vso[task.logissue type=error]One or more required variables are not set. Pipeline will be terminated."
+                      # Final check to ensure all variables are set and not "null"
+                      if ! is_valid "$nameRepo" || ! is_valid "$dir" || ! is_valid "$collectionName" || ! is_valid "$envVariables"; then
+                          echo "##vso[task.logissue type=error]One or more required variables are not set or are set to 'null'. Pipeline will be terminated."
                           echo "##vso[task.complete result=Failed;]"
                           exit 1
                       else
-                          echo "All required variables are set. Proceeding with the pipeline."
+                          echo "All required variables are set and not null. Proceeding with the pipeline."
                       fi
 
                 - bash: |
