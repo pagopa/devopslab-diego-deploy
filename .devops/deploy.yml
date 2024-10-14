@@ -33,6 +33,11 @@ parameters:
     - one-color
     - two-color
 
+- name: POSTMAN_BRANCH 
+  displayName: Postman branch
+  type: string
+  default: 'develop'
+
 variables:
   - name: directoryPattern
     value: 'helm/${{ parameters.ENV }}'
@@ -62,11 +67,15 @@ stages:
       steps:
       - checkout: self
         fetchDepth: 0
+        name: checkoutCode
+        displayName: 'Checkout Code'
   
       - task: UsePythonVersion@0
         inputs:
           versionSpec: '3.x'
           addToPath: true
+        name: setupPython
+        displayName: 'Setup Python'
   
       - task: PythonScript@0
         name: GrepGitFolders
@@ -139,7 +148,6 @@ stages:
                 echo "---"
                 echo "MY_APPS: $(my_apps)"
 
-
                 # Login to ArgoCD
                 curl -sSL -o /tmp/argocd-v2.12.4 https://github.com/argoproj/argo-cd/releases/download/v2.12.4/argocd-linux-amd64
                 chmod +x /tmp/argocd-v2.12.4
@@ -150,17 +158,17 @@ stages:
                 # Sync the app
                 argocd app sync root-diego-app --prune
                 echo "✅ root-app synched"
-              displayName: 'Display Changed Apps'
+              name: displayChangedAppsAndSyncRoot
+              displayName: 'Display Changed Apps and Sync Root App'
 
     - job: CheckRepositoryTrigger
       displayName: 'Check Repository Trigger'
       dependsOn: update_root_app
       condition: succeeded()
-      # variables:
-        # triggerRepo: $[ coalesce(variables['Build.SourceRepositoryName'], 'unknown') ]
       steps:
       - bash: |
           echo "Triggered by repository: $(Build.Repository.Name)"
+        name: displayTriggerRepo
         displayName: 'Display Trigger Repository Info'
           
     - ${{ each item in parameters.APPS }}:
@@ -188,7 +196,8 @@ stages:
               - bash: |
                   echo "Deploying item: ${{ item }}"
                   echo "This item was found in the changed applications list, or it's a complete run (PR or main branch)."
-                displayName: 'Process ${{ item }}'
+                name: displayDeploymentInfo
+                displayName: 'Display Deployment Info'
               - bash: |
                   # Login to ArgoCD
                   curl -sSL -o /tmp/argocd-v2.12.4 https://github.com/argoproj/argo-cd/releases/download/v2.12.4/argocd-linux-amd64
@@ -204,7 +213,7 @@ stages:
                   argocd app actions run "$app_name" restart --kind Deployment --all --grpc-web
 
                   echo "✅ Syncing app: $app_name"
-
+                name: syncArgoApp
                 displayName: 'Sync ArgoCD App: ${{ item }}'
                 env:
                   ARGOCD_SERVER: $(argocdServer)
@@ -225,9 +234,12 @@ stages:
             stageOutcome: 'Succeeded'
           steps:
           - checkout: self
+            name: checkoutSourceCode
+            displayName: 'Checkout Source Code'
+
           - task: Bash@3
+            name: setPostmanVariables
             displayName: 'Set and Print Postman Variables'
-            name: varsPostman
             inputs:
               targetType: 'inline'
               script: |
@@ -288,10 +300,13 @@ stages:
               echo "dir: $(dir)"
               echo "collectionName: $(collectionName)"
               echo "envVariables: $(envVariables)"
+              echo "POSTMAN_BRANCH: ${{ parameters.POSTMAN_BRANCH }}"
 
               echo "All required variables are set. Proceeding with Postman tests."
 
-              git clone https://github.com/pagopa/$(nameRepo).git
+              echo "Cloning repository from branch: ${{ parameters.POSTMAN_BRANCH }}"
+
+              git clone -b ${{ parameters.POSTMAN_BRANCH }} https://github.com/pagopa/$(nameRepo).git
               ls -la
               cd $(nameRepo)/$(dir)
               ls -la
@@ -301,6 +316,7 @@ stages:
               # For example:
               # npm install -g newman
               # newman run $(collectionName) -e $(envVariables)
+            name: runPostmanTests
             displayName: 'Run Postman Tests'
             condition: and(succeeded(), eq(variables['varsPostman.varsSetSuccessfully'], 'true'))
 
@@ -309,7 +325,6 @@ stages:
                 echo "##vso[task.logissue type=warning]Stage completed with issues, but will be marked as successful."
               fi
               echo "##vso[task.complete result=Succeeded;]"
+            name: forceStageSuccess
             displayName: 'Force Stage Success'
             condition: always()
-
-
