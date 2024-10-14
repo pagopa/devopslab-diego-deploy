@@ -318,7 +318,7 @@ stages:
               # newman run $(collectionName) -e $(envVariables)
             name: runPostmanTests
             displayName: 'Run Postman Tests'
-            condition: and(succeeded(), eq(variables['varsPostman.varsSetSuccessfully'], 'true'))
+            condition: and(succeeded(), eq(variables['setPostmanVariables.varsSetSuccessfully'], 'true'))
 
           - bash: |
               if [ "$(stageOutcome)" == "SucceededWithIssues" ]; then
