@@ -21,3 +21,7 @@ jobs:
         uses: pagopa/eng-github-actions-iac-template/global/release-action@main #
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_plugins: |
+            @semantic-release/release-notes-generator@14.0.1
+            @semantic-release/github@11.0.0
+            @semantic-release/commit-analyzer@13.0.0
