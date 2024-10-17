@@ -1,4 +1,5 @@
 postman-test:
+  run: true
   nameRepo: devops-java-springboot-color
   dir: src/test/postman
   collectionName: mil-papos.postman_collection.json
