@@ -68,7 +68,7 @@ stages:
       - script: |
           echo  "build reason:  ${{variables['Build.Reason']}}"
 
-  - stage: CalculatePrGitChangedFolders
+  # - stage: CalculatePrGitChangedFolders
     condition: and(succeeded(), eq(variables.isPullRequestTrigger, true))
     jobs:
     - job: FindGitChangedFolder
@@ -126,7 +126,7 @@ stages:
             echo '$(GrepGitFolders.resultJson)'
             echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(GrepGitFolders.resultJson)"
 
-  - stage: SyncArgoApps
+  # - stage: SyncArgoApps
     dependsOn: 
       - CalculatePrGitChangedFolders
     condition: always()
@@ -232,8 +232,8 @@ stages:
                   ARGOCD_PASSWORD: $(argocdPassword)
 
   - stage: postman_tests
-    displayName: Check and run postman tests
-    dependsOn: [SyncArgoApps]
+    displayName: Check and run postman tests2
+    # dependsOn: [SyncArgoApps]
     condition: succeeded()
     jobs:
       - ${{ each item in parameters.APPS }}:
@@ -357,7 +357,6 @@ stages:
                   # For example:
                   # npm install -g newman
                   # newman run $(collectionName) -e $(envVariables)
-
 
             - bash: |
                 if [ "$(stageOutcome)" == "SucceededWithIssues" ]; then
