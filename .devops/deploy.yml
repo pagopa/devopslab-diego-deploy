@@ -61,7 +61,7 @@ stages:
   - stage: Debug
     condition: and(succeeded(), eq(variables.isPullRequestTrigger, false))
     jobs:
-    - job: debug-steps
+    - job: debug_steps
       pool:
         vmImage: 'ubuntu-latest'
       steps:
