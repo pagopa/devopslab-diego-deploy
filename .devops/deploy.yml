@@ -231,14 +231,14 @@ stages:
                   ARGOCD_USERNAME: $(argocdUsername)
                   ARGOCD_PASSWORD: $(argocdPassword)
 
-  - stage: check_postman_test
+  - stage: postman_tests
     displayName: Check and run postman tests
     dependsOn: [SyncArgoApps]
     condition: succeeded()
     jobs:
       - ${{ each item in parameters.APPS }}:
         - job: postman_tests_${{ replace(item, '-', '_') }}
-          displayName: 'Postman Tests for ${{ item }}'
+          displayName: '${{ item }} postman'
           pool: 
             name: $(DEV_AGENT_POOL)
           variables:
