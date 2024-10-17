@@ -266,12 +266,15 @@ stages:
                       [ ! -z "$1" ] && [ "$1" != "null" ]
                   }
 
-                  # Check if rootPostman or runPostmanTests are empty or null
-                  if is_valid "$rootPostman" || is_valid "$runPostmanTests"; then
-                      echo "##vso[task.logissue type=warning]rootPostman or runPostmanTests is empty or null. Skipping Postman tests."
-                      echo "##vso[task.setvariable variable=runPostmanTest;isOutput=true]true"
+                  # Check if rootPostman is valid, runPostmanTests is valid and true
+                  if ! is_valid "$rootPostman" || ! is_valid "$runPostmanTests" || [ "$runPostmanTests" != "true" ]; then
+                      echo "##vso[task.logissue type=warning]Skipping Postman tests. Reason: tag postman not exists or run is false"
+                      echo "##vso[task.setvariable variable=runPostmanTest;isOutput=true]false"
                       exit 0
                   fi
+
+                  echo "All checks passed. Proceeding with Postman tests."
+                  echo "##vso[task.setvariable variable=runPostmanTest;isOutput=true]true"
 
             - task: Bash@3
               name: setupPostmanVariables
