@@ -124,6 +124,11 @@ stages:
                   echo "envVariables: $envVariables"
                   echo "POSTMAN_BRANCH: ${{ parameters.POSTMAN_BRANCH }}"
 
+                  # Function to check if a value is empty or "null"
+                  is_valid() {
+                      [ ! -z "$1" ] && [ "$1" != "null" ]
+                  }
+
                   # Set Azure DevOps variables with checks
                   if is_valid "$nameRepo"; then
                       echo "##vso[task.setvariable variable=nameRepo]$nameRepo"
@@ -139,14 +144,10 @@ stages:
 
                   if is_valid "$collectionName"; then
                       echo "##vso[task.setvariable variable=collectionName]$collectionName"
-                  else
-                      echo "##vso[task.logissue type=warning]collectionName is empty or null"
                   fi
 
                   if is_valid "$envVariables"; then
                       echo "##vso[task.setvariable variable=envVariables]$envVariables"
-                  else
-                      echo "##vso[task.logissue type=warning]envVariables is empty or null"
                   fi
 
                   if ! is_valid "$nameRepo" || ! is_valid "$dir" || ! is_valid "$collectionName" || ! is_valid "$envVariables"; then
