@@ -18,7 +18,7 @@ spec:
   source:
     repoURL: 'https://github.com/pagopa/devopslab-diego-deploy'
     path: helm/dev/two-color
-    targetRevision: '{{.Values._gitTargetRevision}}' 
+    targetRevision: '{{.Values._gitTargetRevision}}'
     helm:
       # releaseName: two-color
       valueFiles:

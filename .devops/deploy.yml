@@ -4,7 +4,7 @@ pr:
   branches:
     include:
       - main
-  paths:  
+  paths:
     include:
     - 'helm/dev/**'
 
@@ -17,8 +17,8 @@ schedules:
   always: true
 
 parameters:
-- name: ENV 
-  displayName: Environment 
+- name: ENV
+  displayName: Environment
   type: string
   default: dev
   values:
@@ -26,14 +26,14 @@ parameters:
     - uat
     - prod
 
-- name: APPS 
-  displayName: ArgoCD Apps 
+- name: APPS
+  displayName: ArgoCD Apps
   type: object
   default:
     - one-color
     - two-color
 
-- name: POSTMAN_BRANCH 
+- name: POSTMAN_BRANCH
   displayName: Postman branch
   type: string
   default: 'develop'
@@ -79,14 +79,14 @@ stages:
         fetchDepth: 0
         name: checkoutCode
         displayName: 'Checkout Code'
-  
+
       - task: UsePythonVersion@0
         inputs:
           versionSpec: '3.x'
           addToPath: true
         name: setupPython
         displayName: 'Setup Python'
-  
+
       - task: PythonScript@0
         name: grep_git_folders
         displayName: 'Process String and Convert to JSON'
@@ -95,24 +95,24 @@ stages:
           script: |
             import json
             import subprocess
-            
+
             print("Starting the process...")
-            
+
             command = "git diff --name-only --diff-filter=d origin/main...HEAD | xargs -I {} dirname {} | sort -u"
             print(f"Executing command: {command}")
-            
+
             str = subprocess.check_output(command, shell=True).decode('utf-8').strip()
             print(f"Command output: {str}")
-            
+
             filtered_list = [item for item in str.split('\n') if "helm/dev" in item]
             print(f"Filtered list: {filtered_list}")
-            
+
             cleaned_list = [item.replace("helm/dev/", "") for item in filtered_list]
             print(f"Cleaned list: {cleaned_list}")
-            
+
             result_json = json.dumps(cleaned_list)
             print(f"Final JSON result: {result_json}")
-            
+
             print(f'##vso[task.setvariable variable=resultJson;isOutput=true]{result_json}')
             print("Process completed.")
 
@@ -127,7 +127,7 @@ stages:
             echo "##vso[task.setvariable variable=savedResultJsonArray;isOutput=true]$(grep_git_folders.resultJson)"
 
   - stage: sync_argo_apps
-    dependsOn: 
+    dependsOn:
       - calculate_pr_git_changes
     condition: always()
     variables:
@@ -140,7 +140,7 @@ stages:
     jobs:
     - deployment: update_root_app
       displayName:  Update Argocd root app
-      pool: 
+      pool:
         name: $(DEV_AGENT_POOL)
       environment: ${{ parameters.ENV }}
       strategy:
@@ -162,7 +162,7 @@ stages:
                 # Login to ArgoCD
                 curl -sSL -o /tmp/argocd-v2.12.4 https://github.com/argoproj/argo-cd/releases/download/v2.12.4/argocd-linux-amd64
                 chmod +x /tmp/argocd-v2.12.4
-                sudo mv /tmp/argocd-v2.12.4 /usr/local/bin/argocd 
+                sudo mv /tmp/argocd-v2.12.4 /usr/local/bin/argocd
 
                 argocd login $ARGOCD_SERVER --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure --grpc-web
 
@@ -171,11 +171,11 @@ stages:
                 echo "✅ root-app synched"
               name: displayChangedAppsAndSyncRoot
               displayName: 'Display Changed Apps and Sync Root App'
-          
+
     - ${{ each item in parameters.APPS }}:
       - deployment: deploy_${{ replace(item, '-', '_') }}
         displayName: 'Deploy ${{ item }}'
-        pool: 
+        pool:
           name: $(DEV_AGENT_POOL)
         environment: ${{ parameters.ENV }}
         dependsOn: [update_root_app]
@@ -203,14 +203,14 @@ stages:
                   # Login to ArgoCD
                   curl -sSL -o /tmp/argocd-v2.12.4 https://github.com/argoproj/argo-cd/releases/download/v2.12.4/argocd-linux-amd64
                   chmod +x /tmp/argocd-v2.12.4
-                  sudo mv /tmp/argocd-v2.12.4 /usr/local/bin/argocd 
+                  sudo mv /tmp/argocd-v2.12.4 /usr/local/bin/argocd
 
                   argocd login $ARGOCD_SERVER --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure --grpc-web
 
                   # Sync the app
                   app_name=${{ item }}
                   argocd app sync "$app_name" --prune
-                  
+
                   argocd app actions run "$app_name" restart --kind Deployment --all --grpc-web
 
                   echo "✅ Syncing app: $app_name"
@@ -229,7 +229,7 @@ stages:
       - ${{ each item in parameters.APPS }}:
         - job: postman_tests_${{ replace(item, '-', '_') }}
           displayName: '${{ item }} postman'
-          pool: 
+          pool:
             name: $(DEV_AGENT_POOL)
           variables:
             stageOutcome: 'Succeeded'
