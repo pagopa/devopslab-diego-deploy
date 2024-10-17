@@ -129,7 +129,7 @@ stages:
   - stage: sync_argo_apps
     dependsOn: 
       - calculate_pr_git_changes
-    condition: and(succeeded(), always())
+    condition: always()
     variables:
       ${{ if eq(variables.isPullRequestTrigger, true) }}:
         resultJsonArrayPython: $[ stageDependencies.calculate_pr_git_changes.FindGitChangedFolder.outputs['grep_git_folders.resultJson'] ]
@@ -224,7 +224,7 @@ stages:
   - stage: postman_tests
     displayName: Check and run postman tests
     dependsOn: [sync_argo_apps]
-    condition: and(succeeded(), always())
+    condition: always()
     jobs:
       - ${{ each item in parameters.APPS }}:
         - job: postman_tests_${{ replace(item, '-', '_') }}
