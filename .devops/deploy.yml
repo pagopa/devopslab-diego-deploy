@@ -244,100 +244,123 @@ stages:
           variables:
             stageOutcome: 'Succeeded'
           steps:
-          - checkout: self
-            name: checkoutSourceCode
-            displayName: 'Checkout Source Code'
+            - checkout: self
+              name: checkoutSourceCode
+              displayName: 'Checkout Source Code'
 
-          - task: Bash@3
-            name: setPostmanVariables
-            displayName: 'Set and Print Postman Variables'
-            inputs:
-              targetType: 'inline'
-              script: |
-                echo "🔨 Setting variables..."
-                nameRepo=$(yq '.postman-test.nameRepo' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
-                dir=$(yq '.postman-test.dir' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
-                collectionName=$(yq '.postman-test.collectionName' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
-                envVariables=$(yq '.postman-test.envVariables' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
+            - task: Bash@3
+              name: canRunPostmanTests
+              displayName: 'Can postman tests runs'
+              inputs:
+                targetType: 'inline'
+                script: |
+                  echo "🔨 Setting variables..."
+                  rootPostman=$(yq '.postman-test' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
+                  runPostmanTests=$(yq '.postman-test.run' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
 
-                echo "Printing variables..."
-                echo "nameRepo: $nameRepo"
-                echo "dir: $dir"
-                echo "collectionName: $collectionName"
-                echo "envVariables: $envVariables"
-                echo "POSTMAN_BRANCH: ${{ parameters.POSTMAN_BRANCH }}"
+                  echo "rootPostman: $rootPostman"
+                  echo "runPostmanTests: $runPostmanTests"
+
+                  # Function to check if a value is empty or "null"
+                  is_valid() {
+                      [ ! -z "$1" ] && [ "$1" != "null" ]
+                  }
+
+                  # Check if rootPostman or runPostmanTests are empty or null
+                  if is_valid "$rootPostman" || is_valid "$runPostmanTests"; then
+                      echo "##vso[task.logissue type=warning]rootPostman or runPostmanTests is empty or null. Skipping Postman tests."
+                      echo "##vso[task.setvariable variable=runPostmanTest;isOutput=true]true"
+                      exit 0
+                  fi
+
+            - task: Bash@3
+              name: setupPostmanVariables
+              displayName: 'Setup and Print Postman Variables'
+              condition: and(succeeded(), eq(variables['canRunPostmanTests.runPostmanTest'], 'true'))
+              inputs:
+                targetType: 'inline'
+                script: |
+                  # If we're here, rootPostman and runPostmanTests are valid, so we proceed with other checks
+                  nameRepo=$(yq '.postman-test.nameRepo' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
+                  dir=$(yq '.postman-test.dir' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
+                  collectionName=$(yq '.postman-test.collectionName' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
+                  envVariables=$(yq '.postman-test.envVariables' $(Build.Repository.LocalPath)/helm/${{parameters.ENV}}/${{item}}/values.yaml)
+
+                  echo "Printing variables..."
+                  echo "nameRepo: $nameRepo"
+                  echo "dir: $dir"
+                  echo "collectionName: $collectionName"
+                  echo "envVariables: $envVariables"
+                  echo "POSTMAN_BRANCH: ${{ parameters.POSTMAN_BRANCH }}"
+
+                  # Set Azure DevOps variables with checks
+                  if is_valid "$nameRepo"; then
+                      echo "##vso[task.setvariable variable=nameRepo]$nameRepo"
+                  else
+                      echo "##vso[task.logissue type=warning]nameRepo is empty or null"
+                  fi
+
+                  if is_valid "$dir"; then
+                      echo "##vso[task.setvariable variable=dir]$dir"
+                  else
+                      echo "##vso[task.logissue type=warning]dir is empty or null"
+                  fi
+
+                  if is_valid "$collectionName"; then
+                      echo "##vso[task.setvariable variable=collectionName]$collectionName"
+                  else
+                      echo "##vso[task.logissue type=warning]collectionName is empty or null"
+                  fi
+
+                  if is_valid "$envVariables"; then
+                      echo "##vso[task.setvariable variable=envVariables]$envVariables"
+                  else
+                      echo "##vso[task.logissue type=warning]envVariables is empty or null"
+                  fi
+
+                  if ! is_valid "$nameRepo" || ! is_valid "$dir" || ! is_valid "$collectionName" || ! is_valid "$envVariables"; then
+                      echo "##vso[task.logissue type=warning]One or more required variables are not set or are set to 'null'. Postman tests will be skipped."
+                      echo "##vso[task.setvariable variable=runPostmanTest;isOutput=false]false"
+                  else
+                      echo "All required variables are set and not null. Proceeding with the Postman tests."
+                      echo "##vso[task.setvariable variable=runPostmanTest;isOutput=true]true"
+                  fi
+
+            - task: Bash@3
+              name: runPostmanTests
+              displayName: 'Run Postman Tests'
+              condition: and(succeeded(), eq(variables['setupPostmanVariables.runPostmanTest'], 'true'))
+              inputs:
+                targetType: inline
+                script:  |
+                  echo "🖨️ Printing variables..."
+                  echo "nameRepo: $(nameRepo)"
+                  echo "dir: $(dir)"
+                  echo "collectionName: $(collectionName)"
+                  echo "envVariables: $(envVariables)"
+                  echo "POSTMAN_BRANCH: ${{ parameters.POSTMAN_BRANCH }}"
+
+                  echo "All required variables are set. Proceeding with Postman tests."
+
+                  echo "Cloning repository from branch: ${{ parameters.POSTMAN_BRANCH }}"
+
+                  git clone -b ${{ parameters.POSTMAN_BRANCH }} https://github.com/pagopa/$(nameRepo).git
+                  ls -la
+                  cd $(nameRepo)/$(dir)
+                  ls -la
+                  cat postman.txt
+
+                  # Here you would typically run your Postman tests
+                  # For example:
+                  # npm install -g newman
+                  # newman run $(collectionName) -e $(envVariables)
 
 
-                # Function to check if a value is empty or "null"
-                is_valid() {
-                    [ ! -z "$1" ] && [ "$1" != "null" ]
-                }
-
-                # Set Azure DevOps variables with checks
-                if is_valid "$nameRepo"; then
-                    echo "##vso[task.setvariable variable=nameRepo]$nameRepo"
-                else
-                    echo "##vso[task.logissue type=warning]nameRepo is empty or null"
+            - bash: |
+                if [ "$(stageOutcome)" == "SucceededWithIssues" ]; then
+                  echo "##vso[task.logissue type=warning]Stage completed with issues, but will be marked as successful."
                 fi
-
-                if is_valid "$dir"; then
-                    echo "##vso[task.setvariable variable=dir]$dir"
-                else
-                    echo "##vso[task.logissue type=warning]dir is empty or null"
-                fi
-
-                if is_valid "$collectionName"; then
-                    echo "##vso[task.setvariable variable=collectionName]$collectionName"
-                else
-                    echo "##vso[task.logissue type=warning]collectionName is empty or null"
-                fi
-
-                if is_valid "$envVariables"; then
-                    echo "##vso[task.setvariable variable=envVariables]$envVariables"
-                else
-                    echo "##vso[task.logissue type=warning]envVariables is empty or null"
-                fi
-
-                if ! is_valid "$nameRepo" || ! is_valid "$dir" || ! is_valid "$collectionName" || ! is_valid "$envVariables"; then
-                    echo "##vso[task.logissue type=warning]One or more required variables are not set or are set to 'null'. Deployment will be stopped."
-                    echo "##vso[task.setvariable variable=varsSetSuccessfully;isOutput=true]false"
-                    echo "##vso[task.setvariable variable=stageOutcome;]SucceededWithIssues"
-                else
-                    echo "All required variables are set and not null. Proceeding with the deployment."
-                    echo "##vso[task.setvariable variable=varsSetSuccessfully;isOutput=true]true"
-                fi
-
-          - bash: |
-              echo "Printing variables..."
-              echo "nameRepo: $(nameRepo)"
-              echo "dir: $(dir)"
-              echo "collectionName: $(collectionName)"
-              echo "envVariables: $(envVariables)"
-              echo "POSTMAN_BRANCH: ${{ parameters.POSTMAN_BRANCH }}"
-
-              echo "All required variables are set. Proceeding with Postman tests."
-
-              echo "Cloning repository from branch: ${{ parameters.POSTMAN_BRANCH }}"
-
-              git clone -b ${{ parameters.POSTMAN_BRANCH }} https://github.com/pagopa/$(nameRepo).git
-              ls -la
-              cd $(nameRepo)/$(dir)
-              ls -la
-              cat postman.txt
-
-              # Here you would typically run your Postman tests
-              # For example:
-              # npm install -g newman
-              # newman run $(collectionName) -e $(envVariables)
-            name: runPostmanTests
-            displayName: 'Run Postman Tests'
-            condition: and(succeeded(), eq(variables['setPostmanVariables.varsSetSuccessfully'], 'true'))
-
-          - bash: |
-              if [ "$(stageOutcome)" == "SucceededWithIssues" ]; then
-                echo "##vso[task.logissue type=warning]Stage completed with issues, but will be marked as successful."
-              fi
-              echo "##vso[task.complete result=Succeeded;]"
-            name: forceStageSuccess
-            displayName: 'Force Stage Success'
-            condition: always()
+                echo "##vso[task.complete result=Succeeded;]"
+              name: forceStageSuccess
+              displayName: 'Force Stage Success'
+              condition: always()
