@@ -59,7 +59,7 @@ pool:
 
 stages:
   - stage: Debug
-    condition: and(succeeded(), eq(variables.isPullRequestTrigger, false))
+    condition: succeeded()
     jobs:
     - job: debug_steps
       pool:
@@ -69,7 +69,7 @@ stages:
           echo  "build reason:  ${{variables['Build.Reason']}}"
 
   - stage: CalculatePrGitChangedFolders
-    condition: and(succeeded(), eq(variables.isPullRequestTrigger, false))
+    condition: and(succeeded(), eq(variables.isPullRequestTrigger, true))
     jobs:
     - job: FindGitChangedFolder
       pool:
@@ -131,7 +131,7 @@ stages:
       - CalculatePrGitChangedFolders
     condition: always()
     variables:
-      ${{ if eq(variables.isPullRequestTrigger, false) }}:
+      ${{ if eq(variables.isPullRequestTrigger, true) }}:
         resultJsonArrayPython: $[ stageDependencies.CalculatePrGitChangedFolders.FindGitChangedFolder.outputs['GrepGitFolders.resultJson'] ]
         resultJsonArrayBash: $[ stageDependencies.CalculatePrGitChangedFolders.FindGitChangedFolder.outputs['EchoBashJson.savedResultJsonArray'] ]
       ${{ else }}:
