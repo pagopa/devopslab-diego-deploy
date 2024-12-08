@@ -25,7 +25,7 @@ microservice-chart:
 
   image:
     repository: ghcr.io/pagopa/devops-java-springboot-color
-    tag: develop-latest
+    tag: develop-latest@sha256:4e5999a680f49d5d87ce4d903bf3d9ff44994ee1ddf97c0e45935b56448d403f
     pullPolicy: Always
 
   tmpVolumeMount:
