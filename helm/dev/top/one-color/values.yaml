@@ -85,17 +85,17 @@ microservice-chart:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
-        - matchExpressions:
-          - key: kubernetes.azure.com/mode
-            operator: In
-            values:
-            - user
+          - matchExpressions:
+              - key: kubernetes.azure.com/mode
+                operator: In
+                values:
+                  - user
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              aadpodidbinding: diego-pod-identity
-          namespaces: ["diego"]
-          topologyKey: topology.kubernetes.io/zone
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                aadpodidbinding: diego-pod-identity
+            namespaces: ["diego"]
+            topologyKey: topology.kubernetes.io/zone
