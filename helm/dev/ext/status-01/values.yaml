@@ -1,9 +1,9 @@
-postman-test:
-  run: true
-  nameRepo: devops-java-springboot-color
-  dir: src/test/postman
-  collectionName: mil-papos.postman_collection.json
-  envVariables: dev.postman_environment.json
+#postman-test:
+#  run: true
+#  nameRepo: devops-java-springboot-color
+#  dir: src/test/postman
+#  collectionName: mil-papos.postman_collection.json
+#  envVariables: dev.postman_environment.json
 
 microservice-chart:
   namespace: "diego"
@@ -24,8 +24,8 @@ microservice-chart:
     TEST: test
 
   image:
-    repository: ghcr.io/pagopa/devops-java-springboot-color
-    tag: develop-latest
+    repository: ghcr.io/pagopa/devops-app-status
+    tag: v1.7.0
     pullPolicy: Always
 
   tmpVolumeMount:
@@ -61,7 +61,7 @@ microservice-chart:
   ingress:
     create: true
     host: diego.itn.internal.devopslab.pagopa.it
-    path: /diego/one-color(/|$)(.*)
+    path: /diego/status-01(/|$)(.*)
     rewriteTarget: /$2
     servicePort: 8080
 
