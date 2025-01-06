@@ -2,7 +2,10 @@ rules:
   anchors: enable
   braces: enable
   brackets: enable
-  colons: enable
+  colons:
+    ignore: |
+      **/Chart.yaml
+      .devops
   commas: enable
   comments: disable
   comments-indentation: disable
@@ -15,6 +18,7 @@ rules:
   indentation:
     ignore: |
       **/Chart.yaml
+      .devops
   key-duplicates: enable
   key-ordering: disable
   line-length: disable
