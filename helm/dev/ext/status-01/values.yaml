@@ -42,6 +42,10 @@ microservice-chart:
           start: 0 19 * * *
           end: 22 19 * * *
           desiredReplicas: "5"
+      - type: cpu
+        metadata:
+          type: Utilization
+          value: "60"
 
   tmpVolumeMount:
     create: true
