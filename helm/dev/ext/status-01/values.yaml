@@ -28,6 +28,21 @@ microservice-chart:
     tag: v2.1.0
     pullPolicy: Always
 
+  autoscaling:
+    enable: true
+    minReplica: 1
+    maxReplica: 3
+    pollingInterval: 30 # seconds
+    cooldownPeriod: 10 # seconds
+    triggers:
+      - type: cron
+        metadata:
+          # Required
+          timezone: Europe/Rome  # The acceptable values would be a value from the IANA Time Zone Database.
+          start: 0 19 * * *
+          end: 0 20 * * *
+          desiredReplicas: "5"
+
   tmpVolumeMount:
     create: true
     mounts:
@@ -67,11 +82,11 @@ microservice-chart:
 
   resources:
     requests:
-      memory: "256Mi"
-      cpu: "150m"
+      memory: "1Mi"
+      cpu: "1m"
     limits:
-      memory: "256Mi"
-      cpu: "150m"
+      memory: "10Mi"
+      cpu: "10m"
 
   keyvault:
     name: "dvopla-d-itn-diego-kv"
