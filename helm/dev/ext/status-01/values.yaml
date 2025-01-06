@@ -25,7 +25,7 @@ microservice-chart:
 
   image:
     repository: ghcr.io/pagopa/devops-app-status
-    tag: v1.7.0
+    tag: v2.1.0
     pullPolicy: Always
 
   tmpVolumeMount:
