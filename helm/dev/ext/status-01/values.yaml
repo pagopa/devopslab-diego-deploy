@@ -89,8 +89,8 @@ microservice-chart:
       memory: "10Mi"
       cpu: "10m"
     limits:
-      memory: "10Mi"
-      cpu: "10m"
+      memory: "30Mi"
+      cpu: "30m"
 
   keyvault:
     name: "dvopla-d-itn-diego-kv"
