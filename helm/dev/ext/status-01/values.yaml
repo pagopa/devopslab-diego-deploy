@@ -40,8 +40,8 @@ microservice-chart:
           # Required
           timezone: Europe/Rome  # The acceptable values would be a value from the IANA Time Zone Database.
           start: 0 19 * * *
-          end: 22 19 * * *
-          desiredReplicas: "5"
+          end: 33 19 * * *
+#          desiredReplicas: "5"
       - type: cpu
         metadata:
           type: Utilization
