@@ -3,7 +3,6 @@ microservice-chart:
 
   deployment:
     create: true
-    replicas: 1
 
   serviceAccount:
     name: diego-workload-identity
@@ -63,8 +62,27 @@ microservice-chart:
       memory: "256Mi"
       cpu: "150m"
     limits:
-      memory: "256Mi"
-      cpu: "150m"
+      memory: "512Mi"
+      cpu: "300m"
+
+  autoscaling:
+    enable: true
+    minReplica: 0
+    maxReplica: 1
+    pollingInterval: 30 # seconds
+    cooldownPeriod: 10 # seconds
+    triggers:
+      - type: cron
+        metadata:
+          # Required
+          timezone: Europe/Rome  # The acceptable values would be a value from the IANA Time Zone Database.
+          start: 0 7 * * *
+          end: 0 21 * * *
+          desiredReplicas: "1"
+      - type: cpu
+        metadata:
+          type: Utilization
+          value: "60"
 
   autoscaling:
     enable: true
