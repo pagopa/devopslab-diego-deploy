@@ -73,6 +73,25 @@ microservice-chart:
       memory: "256Mi"
       cpu: "150m"
 
+  autoscaling:
+    enable: true
+    minReplica: 0
+    maxReplica: 1
+    pollingInterval: 30 # seconds
+    cooldownPeriod: 10 # seconds
+    triggers:
+      - type: cron
+        metadata:
+          # Required
+          timezone: Europe/Rome  # The acceptable values would be a value from the IANA Time Zone Database.
+          start: 0 21 * * *
+          end: 0 6 * * *
+          desiredReplicas: "5"
+      - type: cpu
+        metadata:
+          type: Utilization
+          value: "60"
+
   keyvault:
     name: "dvopla-d-itn-diego-kv"
     tenantId: "7788edaf-0346-4068-9d79-c868aed15b3d"
@@ -85,17 +104,17 @@ microservice-chart:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
-        - matchExpressions:
-          - key: kubernetes.azure.com/mode
-            operator: In
-            values:
-            - user
+          - matchExpressions:
+              - key: kubernetes.azure.com/mode
+                operator: In
+                values:
+                  - user
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              aadpodidbinding: diego-pod-identity
-          namespaces: ["diego"]
-          topologyKey: topology.kubernetes.io/zone
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                aadpodidbinding: diego-pod-identity
+            namespaces: ["diego"]
+            topologyKey: topology.kubernetes.io/zone
