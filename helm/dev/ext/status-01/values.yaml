@@ -24,7 +24,7 @@ microservice-chart:
 
   image:
     repository: ghcr.io/pagopa/devops-app-status
-    tag: v2.1.0
+    tag: v2.1.0@sha256:da01bbb98ae3c547db525058e0d3cfe517345035b4ce0072ab8f88cea49a0f2b
     pullPolicy: Always
 
   autoscaling:
